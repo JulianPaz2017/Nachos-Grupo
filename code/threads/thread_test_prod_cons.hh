@@ -4,11 +4,17 @@
 /// All rights reserved.  See `copyright.h` for copyright notice and
 /// limitation of liability and disclaimer of warranty provisions.
 
-#ifndef NACHOS_THREADS_THREADTESTPRODCONS__HH
-#define NACHOS_THREADS_THREADTESTPRODCONS__HH
+// prod_cons.hh
+// Interface for the Producer-Consumer test in NachOS.
+// Uses a bounded buffer of size 3, semaphores for sync,
+// and a Lock (mutex) to protect the buffer index.
 
+#ifndef PROD_CONS_H
+#define PROD_CONS_H
+
+#define BUFFER_SIZE   3
+#define NUM_ITEMS     1000
 
 void ThreadTestProdCons();
-
 
 #endif

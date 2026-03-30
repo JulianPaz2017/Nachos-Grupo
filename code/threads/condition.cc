@@ -16,19 +16,34 @@
 
 
 #include "condition.hh"
+#ifdef PLANCHA2
+#include "system.hh"
+#endif /* PLANCHA2 */
 
-
-/// Dummy functions -- so we can compile our later assignments.
-///
 
 Condition::Condition(const char *debugName, Lock *conditionLock)
 {
-    // TODO
+    #ifdef PLANCHA2
+    ASSERT(conditionLock != nullptr);
+
+    name    = debugName;
+    condLock = conditionLock;
+    waitQueue = new List<Semaphore *>;
+
+    DEBUG('s', "Variable de condicion '%s' creada (lock asociado: '%s')\n",
+          name, condLock->GetName());
+    #endif /* PLANCHA2 */
 }
 
 Condition::~Condition()
 {
-    // TODO
+    #ifdef PLANCHA2
+    // La cola debe estar vacia al destruir: no debe haber hilos esperando.
+    ASSERT(waitQueue->IsEmpty());
+    delete waitQueue;
+
+    DEBUG('s', "Variable de condicion '%s' destruida\n", name);
+    #endif /* PLANCHA2 */
 }
 
 const char *
@@ -40,17 +55,72 @@ Condition::GetName() const
 void
 Condition::Wait()
 {
-    // TODO
+    #ifdef PLANCHA2
+    // El hilo que llama a Wait debe poseer el lock.
+    ASSERT(condLock->IsHeldByCurrentThread());
+
+    DEBUG('s', "Thread '%s' hace Wait en condicion '%s'\n",
+          currentThread->GetName(), name);
+
+    // Creamos un semaforo en 0 propio para este hilo y lo encolamos.
+    Semaphore *sem = new Semaphore("cond-wait-sem", 0);
+    waitQueue->Append(sem);
+
+    // Liberamos el lock atomicamente antes de dormirnos.
+    condLock->Release();
+
+    // El hilo se bloquea aqui hasta que alguien haga Signal/Broadcast.
+    sem->P();
+
+    // Al despertar, volvemos a adquirir el lock (estilo Mesa).
+    condLock->Acquire();
+
+    // Limpiamos el semaforo temporal.
+    delete sem;
+
+    DEBUG('s', "Thread '%s' retomo de Wait en condicion '%s'\n",
+          currentThread->GetName(), name);
+    #endif /* PLANCHA2 */
 }
 
 void
 Condition::Signal()
 {
-    // TODO
+    #ifdef PLANCHA2
+    // El hilo que llama a Signal debe poseer el lock.
+    ASSERT(condLock->IsHeldByCurrentThread());
+
+    DEBUG('s', "Thread '%s' hace Signal en condicion '%s'\n",
+          currentThread->GetName(), name);
+
+    if (!waitQueue->IsEmpty()) {
+        // Despertamos a un solo hilo: sacamos su semaforo y hacemos V().
+        Semaphore *sem = waitQueue->Pop();
+        sem->V();
+
+        DEBUG('s', "Signal en '%s': un hilo despertado\n", name);
+    } else {
+        DEBUG('s', "Signal en '%s': no habia hilos esperando\n", name);
+    }
+    #endif /* PLANCHA2 */
 }
 
 void
 Condition::Broadcast()
 {
-    // TODO
+    #ifdef PLANCHA2
+    // El hilo que llama a Broadcast debe poseer el lock.
+    ASSERT(condLock->IsHeldByCurrentThread());
+
+    DEBUG('s', "Thread '%s' hace Broadcast en condicion '%s'\n",
+          currentThread->GetName(), name);
+
+    // Despertamos a todos los hilos que esten esperando.
+    while (!waitQueue->IsEmpty()) {
+        Semaphore *sem = waitQueue->Pop();
+        sem->V();
+    }
+
+    DEBUG('s', "Broadcast en '%s': todos los hilos despertados\n", name);
+    #endif /* PLANCHA2 */
 }

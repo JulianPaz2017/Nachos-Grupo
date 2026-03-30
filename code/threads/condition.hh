@@ -19,9 +19,13 @@
 
 
 #include "lock.hh"
+#ifdef PLANCHA2
+#include "semaphore.hh"
+#include "lib/list.hh"
+#endif /* PLANCHA2 */
 
 
-/// This class defines a “condition variable”.
+/// This class defines a "condition variable".
 ///
 /// A condition variable does not have any value.  It is used for enqueuing
 /// threads that are waiting (`Wait`) that another thread informs them of
@@ -39,18 +43,18 @@
 /// acquired the lock.  This means that operations on condition variables
 /// must be executed in mutual exclusion.
 ///
-/// Nachos' condition variables should work according to the “Mesa” style.
+/// Nachos' condition variables should work according to the "Mesa" style.
 /// When a `Signal` or `Broadcast` awakens another thread, this is put in the
 /// ready queue.  The woken thread is responsible for acquiring the lock
 /// again.  This has to be implemented in the body of the `Wait` function.
 ///
 /// In contrast, there exists another style of condition variables, the
-/// “Hoare” style: according to it, `Signal` loses control of the lock and
+/// "Hoare" style: according to it, `Signal` loses control of the lock and
 /// delivers the CPU to the woken thread; this is run immediately and when
 /// the lock is freed, the thread returns control to the thread that
 /// performed the `Signal`.
 ///
-/// The “Mesa” style is somewhat simpler to implement, but it does not
+/// The "Mesa" style is somewhat simpler to implement, but it does not
 /// guarantee that the woken thread recover the control of the lock
 /// immediately.
 class Condition {
@@ -76,7 +80,15 @@ private:
 
     const char *name;
 
-    // Other needed fields are to be added here.
+    #ifdef PLANCHA2
+    /// El lock asociado a esta variable de condicion.
+    Lock *condLock;
+
+    /// Lista de semaforos, uno por cada hilo esperando en esta condicion.
+    /// Cada hilo en Wait crea un semaforo en 0 y lo encola aqui.
+    /// Signal/Broadcast hacen V() sobre esos semaforos para despertar hilos.
+    List<Semaphore *> *waitQueue;
+    #endif /* PLANCHA2 */
 };
 
 

@@ -16,15 +16,29 @@
 
 
 #include "lock.hh"
+#ifdef PLANCHA2
+#include <string.h>
+#include "system.hh"
+#endif /* PLANCHA2 */
 
 
 /// Dummy functions -- so we can compile our later assignments.
 
 Lock::Lock(const char *debugName)
-{}
+{
+    #ifdef PLANCHA2
+    name = debugName;
+    lock = new Semaphore(debugName, 1);
+    heldedBy = NULL;
+    #endif /* PLANCHA2 */
+}
 
 Lock::~Lock()
-{}
+{
+    #ifdef PLANCHA2
+    delete lock;
+    #endif /* PLANCHA2 */
+}
 
 const char *
 Lock::GetName() const
@@ -35,18 +49,42 @@ Lock::GetName() const
 void
 Lock::Acquire()
 {
-    // TODO
+    #ifdef PLANCHA2
+    // Verificamos si el hilo que llama a Acquire ya posee el lock.
+    ASSERT(!IsHeldByCurrentThread());
+
+    // Si el hilo que llama a Acquire no posee el lock, espera para obtenerlo
+    DEBUG('t', "The thread called '%s' will acquire the lock called '%s'\n", currentThread->GetName(), name);
+    lock->P();
+    DEBUG('t', "'%s' finally acquire '%s'\n", currentThread->GetName(), name);
+
+    heldedBy = currentThread;
+
+    #endif /* PLANCHA2 */
 }
 
 void
 Lock::Release()
 {
-    // TODO
+    #ifdef PLANCHA2
+    // Verificamos si el hilo que llama a Release posee el lock.
+    ASSERT(IsHeldByCurrentThread());
+
+    heldedBy = NULL;
+
+    // Si el hilo posee el lock, entonces lo libera
+    DEBUG('t', "The thread called '%s' will release the lock called '%s'\n", currentThread->GetName(), name);
+    lock->V();
+    DEBUG('t', "'%s' release '%s'\n", currentThread->GetName(), name);
+
+    #endif /* PLANCHA2 */
 }
 
 bool
 Lock::IsHeldByCurrentThread() const
 {
-    // TODO
+    #ifdef PLANCHA2
+    return (currentThread == heldedBy);
+    #endif /* PLANCHA2 */
     return false;
 }

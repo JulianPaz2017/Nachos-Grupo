@@ -17,6 +17,11 @@
 #ifndef NACHOS_THREADS_LOCK__HH
 #define NACHOS_THREADS_LOCK__HH
 
+#define PLANCHA2
+
+#ifdef PLANCHA2
+#include "semaphore.hh"
+#endif /* PLANCHA2 */
 
 /// This class defines a “lock”.
 ///
@@ -58,6 +63,11 @@ private:
     const char *name;
 
     // Add other needed fields here.
+
+    #ifdef PLANCHA2
+    Semaphore *lock;
+    Thread *heldedBy;
+    #endif /* PLANCHA2 */
 };
 
 
