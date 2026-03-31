@@ -14,14 +14,9 @@
 #include <stdio.h>
 
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Productor / Consumidor
-// ─────────────────────────────────────────────────────────────────────────────
-
-static int buffer[BUFFER_SIZE];  // buffer circular acotado
+static int buffer[BUFFER_SIZE];  // buffer 
 static int in  = 0;              // proxima posicion de escritura
 static int out = 0;              // proxima posicion de lectura
-
 static int count = 0;            // cantidad de items en el buffer
 
 // Variables de condicion para sincronizar productor y consumidor.
