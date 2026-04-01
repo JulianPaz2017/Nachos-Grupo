@@ -6,7 +6,7 @@
 
 class Channel {
 public:
-    Channel(const char *debugName, Lock *sendersLock, Lock *receiversLock);
+    Channel(const char *debugName);
 
     ~Channel();
 
@@ -16,22 +16,22 @@ public:
     void Receive(int* message);
 
 private:
-    // Nombre del canal
     const char *name;
 
-    // Variables de condición donde esperarán los emisores/receptores respectivamente
-    static Condition *senders;
-    static Condition *receivers;
+    // Lock único para proteger todo el estado del canal
+    Lock *lock;
 
-    // Lock para proteger el canal
-    Lock *channelLock;
+    // Variables de condición para sincronización
+    Condition *senderCV;
+    Condition *receiverCV;
+    Condition *ackCV;
 
-    // mensaje intermedio 
-    int mensaje;
+    // Buffer intermedio para la transferencia del dato
+    int buffer;
 
-    // Variables enteras para las variables de condición
-    int number_of_senders;
-    int number_of_receivers;
+    // Contadores de hilos esperando
+    int waiters_send;
+    int waiters_receive;
 };
 
 

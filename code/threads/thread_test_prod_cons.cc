@@ -11,6 +11,7 @@
 #include "lock.hh"
 #include "condition.hh"
 #include "system.hh"
+#include "Channel.hh" // Agregamos para testear canales
 #include <stdio.h>
 
 
@@ -153,7 +154,7 @@ static void CondWaiter(void * /* arg */)
 static void CondSignaler(void * /* arg */)
 {
     // Cedemos un poco para darle tiempo al waiter de bloquearse primero.
-    for (int i = 0; i < 5; i++)
+    for (int i = 0; i < NUM_ITEMS; i++)
         currentThread->Yield();
 
     condTestLock->Acquire();
@@ -178,13 +179,62 @@ static void ConditionTest()
     signaler->Fork(CondSignaler, nullptr);
 
     // Cedemos para que ambos hilos terminen.
-    for (int i = 0; i < 20; i++)
+    for (int i = 0; i < NUM_ITEMS * 1.2; i++)
         currentThread->Yield();
 
     delete condVar;
     delete condTestLock;
 
     printf("=== Condition Variable Test finalizado ===\n");
+}
+
+
+// Agregamos para testear Canales:
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Test opcional 3: Canal sincrónico (Rendezvous).
+//   Verifica que Send/Receive se bloqueen mutuamente hasta que ambos coincidan.
+// ─────────────────────────────────────────────────────────────────────────────
+
+static Channel *testChannel;
+
+static void ChannelProducer(void * /* arg */)
+{
+    for (int i = 1; i <= 5; i++) {
+        printf(">>> [Canal] Productor intentando enviar: %d\n", i);
+        testChannel->Send(i);
+        printf("<<< [Canal] Productor envió: %d correctamente\n", i);
+    }
+}
+
+static void ChannelConsumer(void * /* arg */)
+{
+    int val = 0;
+    for (int i = 1; i <= 5; i++) {
+        printf("--- [Canal] Consumidor listo para recibir...\n");
+        testChannel->Receive(&val);
+        printf("+++ [Canal] Consumidor recibió: %d\n", val);
+    }
+}
+
+static void ChannelTest()
+{
+    printf("\n=== Synchronous Channel Test (Rendezvous) ===\n");
+
+    testChannel = new Channel("testChannel");
+
+    Thread *p = new Thread("ChannelProducer");
+    Thread *c = new Thread("ChannelConsumer");
+
+    p->Fork(ChannelProducer, nullptr);
+    c->Fork(ChannelConsumer, nullptr);
+
+    // Yield suficiente para que terminen las transferencias.
+    for (int i = 0; i < NUM_ITEMS * 1.2; i++)
+        currentThread->Yield();
+
+    delete testChannel;
+    printf("=== Synchronous Channel Test finalizado ===\n");
 }
 
 
@@ -219,6 +269,7 @@ ThreadTestProdCons()
     currentThread->Yield();
 
     // ── Tests opcionales ────────────────────────────────────────────────────
-    LockTest();
-    ConditionTest();
+    //LockTest();
+    //ConditionTest();
+    ChannelTest();  // Agregamos nuestra nueva prueba de canales
 }
