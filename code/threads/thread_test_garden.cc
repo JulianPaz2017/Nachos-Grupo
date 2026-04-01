@@ -91,7 +91,6 @@ ThreadTestGarden()
 static Semaphore *s = nullptr;
 static const unsigned NUM_TURNSTILES = 2;
 static const unsigned ITERATIONS_PER_TURNSTILE = 50;
-static bool done[NUM_TURNSTILES];
 static int count;
 
 
@@ -110,7 +109,6 @@ Turnstile(void *n_)
 
 
    printf("Turnstile %u finished. Count is now %u.\n", *n, count);
-   done[*n] = true;
 }
 
 
@@ -122,38 +120,38 @@ ThreadTestGarden()
 
 
    s = new Semaphore("semaforo_test_garden", 1);
-
+   count = 0;
 
    char **names = new char*[NUM_TURNSTILES];
    unsigned *values = new unsigned[NUM_TURNSTILES];
+   Thread **threads = new Thread*[NUM_TURNSTILES];
+
    for (unsigned i = 0; i < NUM_TURNSTILES; i++) {
        printf("Launching turnstile %u.\n", i);
        names[i] = new char[16];
        sprintf(names[i], "Turnstile %u", i);
-       printf("Name: %s\n", names[i]);
        values[i] = i;
-       Thread *t = new Thread(names[i]);
-       t->Fork(Turnstile, (void *) &(values[i]));
+       threads[i] = new Thread(names[i], true); // Hilos joinables
+       threads[i]->Fork(Turnstile, (void *) &(values[i]));
    }
  
    // Wait until all turnstile threads finish their work.  `Thread::Join` is
    // not implemented at the beginning, therefore an ad-hoc workaround is
    // applied here.
    for (unsigned i = 0; i < NUM_TURNSTILES; i++) {
-       while (!done[i]) {
-           currentThread->Yield();
-       }
+       printf("Padre esperando (Join) a %s...\n", names[i]);
+       threads[i]->Join();
    }
-
 
    printf("All turnstiles finished. Final count is %u (should be %u).\n",
           count, ITERATIONS_PER_TURNSTILE * NUM_TURNSTILES);
 
-
    // Free all the memory
    for (unsigned i = 0; i < NUM_TURNSTILES; i++) {
-   delete[] names[i];
+       delete[] names[i];
    }
    delete []values;
    delete []names;
+   delete []threads;
+   delete s;
 }

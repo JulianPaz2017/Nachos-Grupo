@@ -12,7 +12,7 @@
 #ifndef PROD_CONS_H
 #define PROD_CONS_H
 
-#define BUFFER_SIZE   150
+#define BUFFER_SIZE   3
 #define NUM_ITEMS     1000
 
 void ThreadTestProdCons();

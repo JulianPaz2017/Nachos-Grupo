@@ -20,6 +20,7 @@
 #include "thread.hh"
 #include "switch.h"
 #include "system.hh"
+#include "semaphore.hh"
 
 #include <inttypes.h>
 #include <stdio.h>
@@ -40,12 +41,21 @@ IsThreadStatus(ThreadStatus s)
 /// `Thread::Fork`.
 ///
 /// * `threadName` is an arbitrary string, useful for debugging.
-Thread::Thread(const char *threadName)
+Thread::Thread(const char *threadName, bool joinable)
 {
     name     = threadName;
     stackTop = nullptr;
     stack    = nullptr;
     status   = JUST_CREATED;
+
+    this->joinable = joinable;
+    this->isJoined = false;
+    if (joinable) {
+        joinSem = new Semaphore("Join Semaphore", 0);
+    } else {
+        joinSem = nullptr;
+    }
+
 #ifdef USER_PROGRAM
     space    = nullptr;
 #endif
@@ -67,6 +77,9 @@ Thread::~Thread()
     if (stack != nullptr) {
         SystemDep::DeallocBoundedArray((char *) stack,
                                        STACK_SIZE * sizeof *stack);
+    }
+    if (joinSem != nullptr) {
+        delete joinSem;
     }
 }
 
@@ -160,9 +173,30 @@ Thread::Finish()
 
     DEBUG('t', "Finishing thread \"%s\"\n", GetName());
 
-    threadToBeDestroyed = currentThread;
+    if (joinable) {
+        // Notificar que terminamos, pero NO marcarnos para borrado todavía.
+        // El hilo que haga Join() nos borrará.
+        joinSem->V();
+    } else {
+        threadToBeDestroyed = currentThread;
+    }
+
     Sleep();  // Invokes `SWITCH`.
     // Not reached.
+}
+
+void
+Thread::Join()
+{
+    ASSERT(joinable == true);
+    ASSERT(isJoined == false);
+
+    isJoined = true;
+    joinSem->P();
+
+    // En este punto, el hilo ya terminó su ejecución y está durmiendo.
+    // Como el scheduler no lo borró (porque era joinable), lo hacemos nosotros.
+    delete this;
 }
 
 /// Relinquish the CPU if any other thread is ready to run.
@@ -313,5 +347,8 @@ Thread::RestoreUserState()
         machine->WriteRegister(i, userRegisters[i]);
     }
 }
+
+
+
 
 #endif

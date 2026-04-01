@@ -48,6 +48,7 @@
 
 #include <stdint.h>
 
+class Semaphore;
 
 /// CPU register state to be saved on context switch.
 ///
@@ -97,7 +98,7 @@ private:
 public:
 
     /// Initialize a `Thread`.
-    Thread(const char *debugName);
+    Thread(const char *debugName, bool joinable = false);
 
     /// Deallocate a Thread.
     ///
@@ -119,6 +120,9 @@ public:
     /// The thread is done executing.
     void Finish();
 
+    /// Block the caller until this thread terminates.
+    void Join();
+
     /// Check if thread has overflowed its stack.
     void CheckOverflow() const;
 
@@ -130,6 +134,11 @@ public:
 
 private:
     // Some of the private data for this class is listed above.
+
+    // Si el hilo es joinable, el TCB no se borra hasta que se llame a Join.
+    bool joinable;
+    bool isJoined;
+    Semaphore *joinSem;
 
     /// Bottom of the stack.
     ///
