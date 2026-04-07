@@ -20,6 +20,9 @@ static int in  = 0;              // proxima posicion de escritura
 static int out = 0;              // proxima posicion de lectura
 static int count = 0;            // cantidad de items en el buffer
 
+static bool producerFinish = false; // Variable para verificar que el productor finalizó
+static bool consumerFinish = false; // Variable para verificar que el consumidor finalizó
+
 // Variables de condicion para sincronizar productor y consumidor.
 static Condition *notEmpty; // consumidor espera aqui si buffer esta vacio
 static Condition *notFull;  // productor espera aqui si buffer esta lleno
@@ -48,10 +51,14 @@ static void Producer(void * /* arg */)
         notEmpty->Signal();
         mutex->Release();
     }
+
+    producerFinish = true;
 }
 
 static void Consumer(void * /* arg */)
 {
+    int totalValue = 0;
+
     for (int i = 1; i <= NUM_ITEMS; i++) {
         currentThread->Yield();
         mutex->Acquire();
@@ -62,65 +69,20 @@ static void Consumer(void * /* arg */)
 
         int pos  = out;
         int item = buffer[out];
+
         out      = (out + 1) % BUFFER_SIZE;
         count--;
+        totalValue += item;
 
-        // Se usa `item` o bien `i` puesto que son iguales, pero para 
-        // respetar estrictamente el output solicitado:
-        printf("Consumidor consume: %d en %d\n", i, pos);
+        printf("Consumidor consume: %d en %d\n", item, pos);
 
         notFull->Signal();
         mutex->Release();
     }
-}
 
+    printf("El valor final es: %d\n", totalValue);
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Test opcional 1: dos hilos incrementan un contador con un Lock.
-//   Verifica que el lock protege correctamente la seccion critica.
-//   Sin el lock, el contador final seria menor que 2 * LOCK_TEST_ITERS
-//   debido a actualizaciones perdidas por interleaving.
-// ─────────────────────────────────────────────────────────────────────────────
-
-#define LOCK_TEST_ITERS  500
-
-static int   sharedCounter = 0;
-static Lock *counterLock;
-
-static void LockTestThread(void * /* arg */)
-{
-    for (int i = 0; i < LOCK_TEST_ITERS; i++) {
-        counterLock->Acquire();
-        sharedCounter++;
-        counterLock->Release();
-    }
-}
-
-static void LockTest()
-{
-    printf("\n=== Lock Test (2 hilos x %d incrementos, esperado=%d) ===\n",
-           LOCK_TEST_ITERS, 2 * LOCK_TEST_ITERS);
-
-    sharedCounter = 0;
-    counterLock   = new Lock("counterLock");
-
-    Thread *t1 = new Thread("LockThread-1");
-    Thread *t2 = new Thread("LockThread-2");
-    t1->Fork(LockTestThread, nullptr);
-    t2->Fork(LockTestThread, nullptr);
-
-    // Cedemos la CPU para que los hilos terminen antes de imprimir.
-    // En Nachos con scheduling cooperativo alcanza con un Yield por cada
-    // iteracion que hacen los hilos forkeados; como son 500 c/u hacemos
-    // varios yields desde el hilo principal.
-    for (int i = 0; i < 2 * LOCK_TEST_ITERS + 10; i++)
-        currentThread->Yield();
-
-    printf("Contador final: %d (correcto=%s)\n",
-           sharedCounter,
-           sharedCounter == 2 * LOCK_TEST_ITERS ? "SI" : "NO");
-
-    delete counterLock;
+    consumerFinish = true;
 }
 
 void
@@ -144,8 +106,6 @@ ThreadTestProdCons()
     producer->Fork(Producer, nullptr);
 
     // Cedemos para que ambos hilos terminen.
-    for (int i = 0; i < NUM_ITEMS * 2; i++)
+    while (!producerFinish || !consumerFinish)
         currentThread->Yield();
-
-    //LockTest();
 }
