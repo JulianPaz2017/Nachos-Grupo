@@ -57,8 +57,9 @@ thread.o: ../threads/thread.cc ../threads/thread.hh ../lib/utility.hh \
  ../machine/timer.hh ../threads/semaphore.hh
 thread_test.o: ../threads/thread_test.cc ../threads/thread_test_garden.hh \
  ../threads/thread_test_prod_cons.hh ../threads/thread_test_simple.hh \
- ../threads/thread_test_join.hh ../lib/utility.hh ../lib/assert.hh \
- ../lib/debug.hh ../lib/debug_opts.hh ../machine/system_dep.hh
+ ../threads/thread_test_join.hh ../threads/thread_channel_test.hh \
+ ../lib/utility.hh ../lib/assert.hh ../lib/debug.hh ../lib/debug_opts.hh \
+ ../machine/system_dep.hh
 thread_test_garden.o: ../threads/thread_test_garden.cc \
  ../threads/thread_test_garden.hh ../threads/system.hh \
  ../threads/thread.hh ../lib/utility.hh ../lib/assert.hh ../lib/debug.hh \
@@ -84,6 +85,13 @@ thread_test_join.o: ../threads/thread_test_join.cc \
  ../machine/system_dep.hh ../threads/system.hh ../threads/scheduler.hh \
  ../lib/list.hh ../lib/utility.hh ../machine/interrupt.hh \
  ../machine/statistics.hh ../machine/timer.hh
+thread_channel_test.o: ../threads/thread_channel_test.cc \
+ ../threads/thread_channel_test.hh ../threads/Channel.hh \
+ ../threads/lock.hh ../threads/semaphore.hh ../threads/thread.hh \
+ ../lib/utility.hh ../lib/assert.hh ../lib/debug.hh ../lib/debug_opts.hh \
+ ../machine/system_dep.hh ../lib/list.hh ../lib/utility.hh \
+ ../threads/condition.hh ../threads/system.hh ../threads/scheduler.hh \
+ ../machine/interrupt.hh ../machine/statistics.hh ../machine/timer.hh
 assert.o: ../lib/assert.cc ../lib/assert.hh
 debug.o: ../lib/debug.cc ../lib/debug.hh ../lib/debug_opts.hh \
  ../lib/utility.hh ../lib/assert.hh ../machine/system_dep.hh
@@ -143,6 +151,7 @@ thread_test_garden.o: ../threads/thread_test_garden.hh
 thread_test_prod_cons.o: ../threads/thread_test_prod_cons.hh
 thread_test_simple.o: ../threads/thread_test_simple.hh
 thread_test_join.o: ../threads/thread_test_join.hh
+thread_channel_test.o: ../threads/thread_channel_test.hh
 assert.o: ../lib/assert.hh
 debug.o: ../lib/debug.hh ../lib/debug_opts.hh
 debug_opts.o: ../lib/debug_opts.hh

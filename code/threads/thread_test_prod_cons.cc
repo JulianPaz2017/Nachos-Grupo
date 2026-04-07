@@ -197,20 +197,22 @@ static void ConditionTest()
 // ─────────────────────────────────────────────────────────────────────────────
 
 static Channel *testChannel;
+static Lock *testChannelLock;
 
 static void ChannelProducer(void * /* arg */)
 {
-    for (int i = 1; i <= 5; i++) {
-        printf(">>> [Canal] Productor intentando enviar: %d\n", i);
-        testChannel->Send(i);
-        printf("<<< [Canal] Productor envió: %d correctamente\n", i);
+    while (count < NUM_ITEMS) {
+        printf(">>> [Canal] Productor intentando enviar: %d\n", count);
+        testChannel->Send(count);
+        count++;
+        printf("<<< [Canal] Productor envió: %d correctamente\n", count);
     }
 }
 
 static void ChannelConsumer(void * /* arg */)
 {
     int val = 0;
-    for (int i = 1; i <= 5; i++) {
+    while (count != NUM_ITEMS) {
         printf("--- [Canal] Consumidor listo para recibir...\n");
         testChannel->Receive(&val);
         printf("+++ [Canal] Consumidor recibió: %d\n", val);
@@ -222,15 +224,25 @@ static void ChannelTest()
     printf("\n=== Synchronous Channel Test (Rendezvous) ===\n");
 
     testChannel = new Channel("testChannel");
+    testChannelLock = new Lock("LockChannel");
 
-    Thread *p = new Thread("ChannelProducer");
-    Thread *c = new Thread("ChannelConsumer");
+    Thread *p1 = new Thread("ChannelProducer1");
+    Thread *p2 = new Thread("ChannelProducer2");
+    Thread *p3 = new Thread("ChannelProducer3");
 
-    p->Fork(ChannelProducer, nullptr);
-    c->Fork(ChannelConsumer, nullptr);
+    Thread *c1 = new Thread("ChannelConsumer1");
+    Thread *c2 = new Thread("ChannelConsumer2");
+    Thread *c3 = new Thread("ChannelConsumer3");
+
+    p1->Fork(ChannelProducer, nullptr);
+    p2->Fork(ChannelProducer, nullptr);
+    p3->Fork(ChannelProducer, nullptr);
+    c1->Fork(ChannelConsumer, nullptr);
+    c2->Fork(ChannelConsumer, nullptr);
+    c3->Fork(ChannelConsumer, nullptr);
 
     // Yield suficiente para que terminen las transferencias.
-    for (int i = 0; i < NUM_ITEMS * 1.2; i++)
+    for (int i = 0; i < NUM_ITEMS * 2; i++)
         currentThread->Yield();
 
     delete testChannel;
@@ -257,16 +269,16 @@ ThreadTestProdCons()
     notEmpty = new Condition("notEmpty", mutex);
     notFull  = new Condition("notFull", mutex);
 
-    // Creamos el consumidor primero para que este listo cuando lleguen items.
-    Thread *consumer = new Thread("Consumer");
-    consumer->Fork(Consumer, nullptr);
-
-    Thread *producer = new Thread("Producer");
-    producer->Fork(Producer, nullptr);
+//    // Creamos el consumidor primero para que este listo cuando lleguen items.
+//    Thread *consumer = new Thread("Consumer");
+//    consumer->Fork(Consumer, nullptr);
+//
+//    Thread *producer = new Thread("Producer");
+//    producer->Fork(Producer, nullptr);
 
     // El hilo principal cede la CPU; el scheduler se encarga del resto.
     // Cuando productor y consumidor terminen, Nachos volvera aqui.
-    currentThread->Yield();
+//    currentThread->Yield();
 
     // ── Tests opcionales ────────────────────────────────────────────────────
     //LockTest();
