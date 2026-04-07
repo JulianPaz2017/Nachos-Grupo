@@ -31,6 +31,13 @@ static Lock *sumLock;         // protege globalSum
 
 
 static void
+Sender() 
+{
+  
+
+}
+
+static void
 Sender(void * /* arg */)
 {
     while (true) {

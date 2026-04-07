@@ -31,7 +31,7 @@ static Lock *mutex;
 static void Producer(void * /* arg */)
 {
     for (int i = 1; i <= NUM_ITEMS; i++) {
-
+        currentThread->Yield();
         mutex->Acquire();
         while (count == BUFFER_SIZE) {
             printf("Productor esperando (buffer lleno)\n");
@@ -53,7 +53,7 @@ static void Producer(void * /* arg */)
 static void Consumer(void * /* arg */)
 {
     for (int i = 1; i <= NUM_ITEMS; i++) {
-
+        currentThread->Yield();
         mutex->Acquire();
         while (count == 0) {
             printf("Consumidor esperando (buffer vacio)\n");
@@ -123,142 +123,9 @@ static void LockTest()
     delete counterLock;
 }
 
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Test opcional 2: variable de condicion estilo Mesa.
-//   Un hilo "waiter" espera en una condicion; otro hilo "signaler"
-//   modifica el estado compartido y hace Signal.  Verifica que el waiter
-//   solo avanza cuando la condicion es verdadera.
-// ─────────────────────────────────────────────────────────────────────────────
-
-static Lock      *condTestLock;
-static Condition *condVar;
-static bool       condReady = false;   // estado compartido protegido por condTestLock
-
-static void CondWaiter(void * /* arg */)
-{
-    condTestLock->Acquire();
-
-    // Bucle while: idioma correcto para variables de condicion estilo Mesa.
-    // Re-chequeamos la condicion al despertar porque otro hilo pudo
-    // haberla consumido antes que nosotros (spurious wakeup o Broadcast).
-    while (!condReady) {
-        printf("Waiter: condicion falsa, esperando...\n");
-        condVar->Wait();  // libera el lock y duerme; al volver lo readquiere
-    }
-
-    printf("Waiter: condicion verdadera, continua\n");
-    condTestLock->Release();
-}
-
-static void CondSignaler(void * /* arg */)
-{
-    // Cedemos un poco para darle tiempo al waiter de bloquearse primero.
-    for (int i = 0; i < NUM_ITEMS; i++)
-        currentThread->Yield();
-
-    condTestLock->Acquire();
-    condReady = true;
-    printf("Signaler: estado cambiado, enviando Signal\n");
-    condVar->Signal();
-    condTestLock->Release();
-}
-
-static void ConditionTest()
-{
-    printf("\n=== Condition Variable Test ===\n");
-
-    condReady    = false;
-    condTestLock = new Lock("condTestLock");
-    condVar      = new Condition("condVar", condTestLock);
-
-    Thread *waiter   = new Thread("Waiter");
-    Thread *signaler = new Thread("Signaler");
-
-    waiter->Fork(CondWaiter,   nullptr);
-    signaler->Fork(CondSignaler, nullptr);
-
-    // Cedemos para que ambos hilos terminen.
-    for (int i = 0; i < NUM_ITEMS * 1.2; i++)
-        currentThread->Yield();
-
-    delete condVar;
-    delete condTestLock;
-
-    printf("=== Condition Variable Test finalizado ===\n");
-}
-
-
-// Agregamos para testear Canales:
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Test opcional 3: Canal sincrónico (Rendezvous).
-//   Verifica que Send/Receive se bloqueen mutuamente hasta que ambos coincidan.
-// ─────────────────────────────────────────────────────────────────────────────
-
-static Channel *testChannel;
-static Lock *testChannelLock;
-
-static void ChannelProducer(void * /* arg */)
-{
-    while (count < NUM_ITEMS) {
-        printf(">>> [Canal] Productor intentando enviar: %d\n", count);
-        testChannel->Send(count);
-        count++;
-        printf("<<< [Canal] Productor envió: %d correctamente\n", count);
-    }
-}
-
-static void ChannelConsumer(void * /* arg */)
-{
-    int val = 0;
-    while (count != NUM_ITEMS) {
-        printf("--- [Canal] Consumidor listo para recibir...\n");
-        testChannel->Receive(&val);
-        printf("+++ [Canal] Consumidor recibió: %d\n", val);
-    }
-}
-
-static void ChannelTest()
-{
-    printf("\n=== Synchronous Channel Test (Rendezvous) ===\n");
-
-    testChannel = new Channel("testChannel");
-    testChannelLock = new Lock("LockChannel");
-
-    Thread *p1 = new Thread("ChannelProducer1");
-    Thread *p2 = new Thread("ChannelProducer2");
-    Thread *p3 = new Thread("ChannelProducer3");
-
-    Thread *c1 = new Thread("ChannelConsumer1");
-    Thread *c2 = new Thread("ChannelConsumer2");
-    Thread *c3 = new Thread("ChannelConsumer3");
-
-    p1->Fork(ChannelProducer, nullptr);
-    p2->Fork(ChannelProducer, nullptr);
-    p3->Fork(ChannelProducer, nullptr);
-    c1->Fork(ChannelConsumer, nullptr);
-    c2->Fork(ChannelConsumer, nullptr);
-    c3->Fork(ChannelConsumer, nullptr);
-
-    // Yield suficiente para que terminen las transferencias.
-    for (int i = 0; i < NUM_ITEMS * 2; i++)
-        currentThread->Yield();
-
-    delete testChannel;
-    printf("=== Synchronous Channel Test finalizado ===\n");
-}
-
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Punto de entrada principal
-// ─────────────────────────────────────────────────────────────────────────────
-
-
 void
 ThreadTestProdCons()
 {
-    // ── Productor / Consumidor ──────────────────────────────────────────────
     printf("===` Producer-Consumer Test (buffer=%d, items=%d) ===\n",
            BUFFER_SIZE, NUM_ITEMS);
 
@@ -269,19 +136,16 @@ ThreadTestProdCons()
     notEmpty = new Condition("notEmpty", mutex);
     notFull  = new Condition("notFull", mutex);
 
-//    // Creamos el consumidor primero para que este listo cuando lleguen items.
-//    Thread *consumer = new Thread("Consumer");
-//    consumer->Fork(Consumer, nullptr);
-//
-//    Thread *producer = new Thread("Producer");
-//    producer->Fork(Producer, nullptr);
+    // Creamos el consumidor primero para que este listo cuando lleguen items.
+    Thread *consumer = new Thread("Consumer");
+    consumer->Fork(Consumer, nullptr);
 
-    // El hilo principal cede la CPU; el scheduler se encarga del resto.
-    // Cuando productor y consumidor terminen, Nachos volvera aqui.
-//    currentThread->Yield();
+    Thread *producer = new Thread("Producer");
+    producer->Fork(Producer, nullptr);
 
-    // ── Tests opcionales ────────────────────────────────────────────────────
+    // Cedemos para que ambos hilos terminen.
+    for (int i = 0; i < NUM_ITEMS * 2; i++)
+        currentThread->Yield();
+
     //LockTest();
-    //ConditionTest();
-    ChannelTest();  // Agregamos nuestra nueva prueba de canales
 }
