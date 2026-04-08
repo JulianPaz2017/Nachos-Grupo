@@ -123,6 +123,7 @@ ThreadTestChannel()
         snprintf(rName, 32, "Receiver-%d", r);
         Thread *t = new Thread(rName);
         t->Fork(Receiver, nullptr);
+        delete rName;
     }
 
     // Crear emisores.
@@ -131,12 +132,21 @@ ThreadTestChannel()
         snprintf(sName, 32, "Sender-%d", s);
         Thread *t = new Thread(sName);
         t->Fork(Sender, nullptr);
+        delete sName;
     }
 
     // Esperar a que todos terminen (scheduling cooperativo).
     while (activeSenders > 0 && activeReceivers > 0) {
         currentThread->Yield();
     }
+
+    // Espero un tiempo hasta que se terminen de limpiar los procesos
+    // (Si no lo agrego hay casos donde los procesos emisores/receptores no terminan
+    // de darse de baja, y el padre se daba de baja. Esto generaba pérdida de memoria)
+    //
+    // Pueden eliminarse el 'for' sin problemas
+    for (int i = 1; i < (NUM_RECEIVERS+NUM_SENDERS)*1.2; i++) 
+        currentThread->Yield();
 
 
     // Verificación.

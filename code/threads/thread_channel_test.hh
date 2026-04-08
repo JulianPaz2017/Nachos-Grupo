@@ -10,8 +10,8 @@
 #define TOTAL_MSGS     50
 
 // Cantidad de emisores y receptores (se pueden variar).
-#define NUM_SENDERS    32
-#define NUM_RECEIVERS  32
+#define NUM_SENDERS    15
+#define NUM_RECEIVERS  40
 void ThreadTestChannel();
 
 #endif

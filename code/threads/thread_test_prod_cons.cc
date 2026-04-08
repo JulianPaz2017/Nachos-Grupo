@@ -107,4 +107,8 @@ ThreadTestProdCons()
     // Cedemos para que ambos hilos terminen.
     while (!producerFinish || !consumerFinish)
         currentThread->Yield();
+
+    delete notEmpty;
+    delete notFull;
+    delete mutex;
 }
