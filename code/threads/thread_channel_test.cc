@@ -21,7 +21,7 @@ static int  nextValue;        // próximo valor a enviar
 static Lock *nextValueLock;   // protege nextValue
 
 static int  activeReceivers = NUM_RECEIVERS; // cuántos centinelas se enviaron ya
-static Lock *receiversLock;    // protege sentinelsSent
+static Lock *receiversLock;                  // protege sentinelsSent
 
 static int activeSenders = NUM_SENDERS; // Cantidad de emisores activos
 static Lock *sendersLock;               // Lock para los emisores activos
@@ -44,9 +44,11 @@ Sender(void*)
             DEBUG('q', ">>  Emisor '%s' va a enviar %d\n",
                 currentThread->GetName(), val);
             chan->Send(val);
+            currentThread->Yield(); 
             nextValue++;
         }
         nextValueLock->Release();
+        currentThread->Yield(); 
     } while(val <= TOTAL_MSGS);
 
     sendersLock->Acquire();
@@ -71,6 +73,7 @@ Receiver(void*)
 
     do {
         chan->Receive(&val);
+        currentThread->Yield(); 
 
         DEBUG('q', "<< Receptor '%s' recibió %d\n", 
                 currentThread->GetName(), val);
@@ -94,71 +97,6 @@ Receiver(void*)
     receiversLock->Release();
 }
 
-// static void
-// Sender(void * /* arg */)
-// {
-    // while (true) {
-        //Tomar el próximo valor a enviar bajo exclusión mutua.
-        // nextValueLock->Acquire();
-        // int val = nextValue;
-        // DEBUG('q', "Tome nextValue %d\n", val);
-        // if (val > TOTAL_MSGS) {
-            // nextValueLock->Release();
-            // DEBUG('q', "Voy a salir\n");
-            // break;  // ya no quedan datos por enviar
-        // }
-        // nextValue++;
-        // nextValueLock->Release();
-// 
-        // 
-        // chan->Send(val);
-    // }
-// 
-    //El emisor intenta enviar centinelas (-1) hasta cubrir NUM_RECEIVERS.
-    // sendersLock->Acquire();
-    // while (cantidadDeEmisoresActivos == 1 && sentinelsSent < NUM_RECEIVERS) {
-        // printf(">>> Emisor '%s' va a enviar un centinela (-1)\n",
-            //    currentThread->GetName());
-        // chan->Send(-1);
-    // }
-    // cantidadDeEmisoresActivos--;
-    // sendersLock->Release();
-// }
-// 
-// 
-// static void
-// Receiver(void * /* arg */)
-// {
-    // int localSum = 0;
-    // int val;
-// 
-    // while (true) {
-        // chan->Receive(&val);
-// 
-        // if (val == -1) {
-            //Centinela: este receptor termina.
-            // printf("<<< Receptor '%s' recibió centinela, termina (parcial=%d)\n",
-                //    currentThread->GetName(), localSum);
-// 
-            // break;
-        // }
-// 
-        // printf("<<< Receptor '%s' recibió %d\n",
-            //    currentThread->GetName(), val);
-        // localSum += val;
-    // }
-// 
-    //Acumular la suma local en la variable global.
-    // sumLock->Acquire();
-    // globalSum += localSum;
-    // sumLock->Release();
-    // 
-    // sentinelLock->Acquire();
-    // sentinelsSent++;
-    // sentinelLock->Release();
-// }
-
-
 void
 ThreadTestChannel()
 {
@@ -179,17 +117,17 @@ ThreadTestChannel()
     int expectedSum = TOTAL_MSGS * (TOTAL_MSGS + 1) / 2;
 
     // Crear receptores (primero para que estén listos al recibir).
-    char rName[32];
     for (int r = 0; r < NUM_RECEIVERS; r++) {
-        snprintf(rName, sizeof rName, "Receiver-%d", r);
+        char *rName = new char[32]; 
+        snprintf(rName, 32, "Receiver-%d", r);
         Thread *t = new Thread(rName);
         t->Fork(Receiver, nullptr);
     }
 
     // Crear emisores.
-    char sName[32];
     for (int s = 0; s < NUM_SENDERS; s++) {
-        snprintf(sName, sizeof sName, "Sender-%d", s);
+        char *sName = new char[32]; 
+        snprintf(sName, 32, "Sender-%d", s);
         Thread *t = new Thread(sName);
         t->Fork(Sender, nullptr);
     }

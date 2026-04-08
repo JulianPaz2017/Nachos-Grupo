@@ -7,11 +7,9 @@
 
 #include "thread_test_prod_cons.hh"
 
-#include "semaphore.hh"
 #include "lock.hh"
 #include "condition.hh"
 #include "system.hh"
-#include "Channel.hh" // Agregamos para testear canales
 #include <stdio.h>
 
 
