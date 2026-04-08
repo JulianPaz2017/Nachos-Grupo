@@ -1,18 +1,19 @@
 #include "thread_test_join.hh"
 #include "thread.hh"
 #include "system.hh"
+#include "lib/utility.hh"
 #include <stdio.h>
 
 static void 
 SimpleChild(void *arg)
 {
     const char *name = (const char *)arg;
-    printf("Hilo '%s' iniciando ejecución...\n", name);
+    DEBUG('t', "Hilo '%s' iniciando ejecucion...\n", name);
     for (int i = 0; i < 5; i++) {
-        printf("Hilo '%s' trabajando %d...\n", name, i);
+        DEBUG('t', "Hilo '%s' trabajando %d...\n", name, i);
         currentThread->Yield();
     }
-    printf("Hilo '%s' terminado.\n", name);
+    DEBUG('t', "Hilo '%s' terminado.\n", name);
 }
 
 void 

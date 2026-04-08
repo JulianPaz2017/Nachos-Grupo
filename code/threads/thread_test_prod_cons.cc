@@ -10,6 +10,7 @@
 #include "lock.hh"
 #include "condition.hh"
 #include "system.hh"
+#include "lib/utility.hh"
 #include <stdio.h>
 
 
@@ -35,7 +36,7 @@ static void Producer(void * /* arg */)
         currentThread->Yield();
         mutex->Acquire();
         while (count == BUFFER_SIZE) {
-            printf("Productor esperando (buffer lleno)\n");
+            DEBUG('t', "Productor esperando (buffer lleno)\n");
             notFull->Wait();
         }
 
@@ -44,7 +45,7 @@ static void Producer(void * /* arg */)
         in         = (in + 1) % BUFFER_SIZE;
         count++;
 
-        printf("Productor produce: %d en %d\n", i, pos);
+        DEBUG('t', "Productor produce: %d en %d\n", i, pos);
 
         notEmpty->Signal();
         mutex->Release();
@@ -61,7 +62,7 @@ static void Consumer(void * /* arg */)
         currentThread->Yield();
         mutex->Acquire();
         while (count == 0) {
-            printf("Consumidor esperando (buffer vacio)\n");
+            DEBUG('t', "Consumidor esperando (buffer vacio)\n");
             notEmpty->Wait();
         }
 
@@ -72,7 +73,7 @@ static void Consumer(void * /* arg */)
         count--;
         totalValue += item;
 
-        printf("Consumidor consume: %d en %d\n", item, pos);
+        DEBUG('t', "Consumidor consume: %d en %d\n", item, pos);
 
         notFull->Signal();
         mutex->Release();
