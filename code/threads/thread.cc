@@ -41,20 +41,23 @@ IsThreadStatus(ThreadStatus s)
 /// `Thread::Fork`.
 ///
 /// * `threadName` is an arbitrary string, useful for debugging.
-Thread::Thread(const char *threadName, bool joinable)
+Thread::Thread(const char *threadName, bool joinableValue, unsigned priorityValue)
 {
     name     = threadName;
     stackTop = nullptr;
     stack    = nullptr;
     status   = JUST_CREATED;
 
-    this->joinable = joinable;
+    this->joinable = joinableValue;
     this->isJoined = false;
     if (joinable) {
         joinSem = new Semaphore("Join Semaphore", 0);
     } else {
         joinSem = nullptr;
     }
+
+    // Seteamos la prioridad por defecto
+    priority = priorityValue;
 
 #ifdef USER_PROGRAM
     space    = nullptr;
@@ -317,6 +320,18 @@ Thread::StackAllocate(VoidFunctionPtr func, void *arg)
     machineState[InitialPCState]  = (uintptr_t) func;
     machineState[InitialArgState] = (uintptr_t) arg;
     machineState[WhenDonePCState] = (uintptr_t) ThreadFinish;
+}
+
+void
+Thread::SetPriority(unsigned priority)
+{
+    this->priority = priority;
+}
+
+unsigned
+Thread::GetPriority()
+{
+    return priority;
 }
 
 #ifdef USER_PROGRAM

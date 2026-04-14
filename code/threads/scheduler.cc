@@ -27,13 +27,15 @@
 /// Initialize the list of ready but not running threads to empty.
 Scheduler::Scheduler()
 {
-    readyList = new List<Thread *>;
+    for (int i=0; i < MAX_PRIORITY; i++)
+        readyList[i] = new List<Thread *>;
 }
 
 /// De-allocate the list of ready threads.
 Scheduler::~Scheduler()
 {
-    delete readyList;
+    for (int i=0; i < MAX_PRIORITY; i++)
+        delete readyList[i];
 }
 
 /// Mark a thread as ready, but not running.
@@ -45,10 +47,17 @@ Scheduler::ReadyToRun(Thread *thread)
 {
     ASSERT(thread != nullptr);
 
-    DEBUG('t', "Putting thread %s on ready list\n", thread->GetName());
+    unsigned priority = thread->GetPriority();
+
+    DEBUG('t', "Putting thread %s on ready list with priority %u\n", 
+            thread->GetName(), priority);
 
     thread->SetStatus(READY);
-    readyList->Append(thread);
+
+    // Verificamos que la prioridad sea válida
+    ASSERT(priority <= MAX_PRIORITY);
+
+    readyList[priority]->Append(thread);
 }
 
 /// Return the next thread to be scheduled onto the CPU.
@@ -59,7 +68,13 @@ Scheduler::ReadyToRun(Thread *thread)
 Thread *
 Scheduler::FindNextToRun()
 {
-    return readyList->Pop();
+    for (int i = MAX_PRIORITY; i > 0; i--){
+        if (!readyList[i]->IsEmpty()) {
+            return readyList[i]->Pop();
+        }
+    }
+
+    return readyList[0]->Pop();
 }
 
 /// Dispatch the CPU to `nextThread`.
@@ -80,27 +95,31 @@ Scheduler::Run(Thread *nextThread)
 
     Thread *oldThread = currentThread;
 
-#ifdef USER_PROGRAM  // Ignore until running user programs.
+    #ifdef USER_PROGRAM  // Ignore until running user programs.
     if (currentThread->space != nullptr) {
         // If this thread is a user program, save the user's CPU registers.
         currentThread->SaveUserState();
         currentThread->space->SaveState();
     }
-#endif
-
+    #endif
+    
     oldThread->CheckOverflow();  // Check if the old thread had an undetected
-                                 // stack overflow.
+    // stack overflow.
+    
+    // Degradamos la prioridad del proceso que se estaba ejecutando
+    unsigned priority = oldThread->GetPriority();
+    oldThread->SetPriority((priority == 0)? 0:(priority-1));
 
     currentThread = nextThread;  // Switch to the next thread.
     currentThread->SetStatus(RUNNING);  // `nextThread` is now running.
-
+    
     DEBUG('t', "Switching from thread \"%s\" to thread \"%s\"\n",
-          oldThread->GetName(), nextThread->GetName());
-
-    // This is a machine-dependent assembly language routine defined in
-    // `switch.s`.  You may have to think a bit to figure out what happens
-    // after this, both from the point of view of the thread and from the
-    // perspective of the “outside world”.
+        oldThread->GetName(), nextThread->GetName());
+        
+        // This is a machine-dependent assembly language routine defined in
+        // `switch.s`.  You may have to think a bit to figure out what happens
+        // after this, both from the point of view of the thread and from the
+        // perspective of the “outside world”.
 
     SWITCH(oldThread, nextThread);
 
@@ -139,5 +158,9 @@ void
 Scheduler::Print()
 {
     printf("Ready list contents:\n");
-    readyList->Apply(ThreadPrint);
+
+    for (int i = 0; i <= MAX_PRIORITY; i++) {
+        printf("\tPriority queue %d:\n", i);
+        readyList[i]->Apply(ThreadPrint);
+    }
 }
