@@ -134,6 +134,7 @@ void
 Thread::CheckOverflow() const
 {
     if (stack != nullptr) {
+        DEBUG('q', "stack[%p] : %p (stack fence es %p)\n", stack, *stack,STACK_FENCEPOST);
         ASSERT(*stack == STACK_FENCEPOST);
     }
 }

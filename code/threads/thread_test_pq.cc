@@ -13,11 +13,11 @@ PrintName(void* arg){
 void
 ThreadTestPriorityQueue()
 {
-    printf("===` Priority Queues Test ===\n");
+    printf("=== Priority Queues Test ===\n");
 
-    Thread *a = new Thread("A", true, 5);
+    Thread *a = new Thread("A", true, 6);
     Thread *b = new Thread("B", true, 9);
-    Thread *c = new Thread("C", true, 6);
+    Thread *c = new Thread("C", true, 7);
     Thread *d = new Thread("D", true, 8);
 
     a->Fork(PrintName, NULL);
@@ -25,8 +25,13 @@ ThreadTestPriorityQueue()
     c->Fork(PrintName, NULL);
     d->Fork(PrintName, NULL);
 
-    a->Join();
+    printf("a: %p\n", a);
+    printf("b: %p\n", b);
+    printf("c: %p\n", c);
+    printf("d: %p\n", d);
+
     b->Join();
-    c->Join();
     d->Join();
+    c->Join();
+    a->Join();
 }

@@ -107,6 +107,7 @@ Scheduler::Run(Thread *nextThread)
     }
     #endif
     
+    printf("%s: %p\n", oldThread->GetName(), oldThread);
     oldThread->CheckOverflow();  // Check if the old thread had an undetected
     // stack overflow.
     
