@@ -41,7 +41,7 @@ public:
 private:
 
     // Queue of threads that are ready to run, but not running.
-    List<Thread*> *readyList[MAX_PRIORITY];
+    List<Thread*>** readyList;
 
 };
 

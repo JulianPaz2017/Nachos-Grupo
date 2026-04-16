@@ -89,7 +89,7 @@ SyscallHandler(ExceptionType _et)
             interrupt->Halt();
             break;
 
-        case SC_CREATE: {
+        case SC_CREATE: { // Create(char *filename);
             int filenameAddr = machine->ReadRegister(4);
             if (filenameAddr == 0) {
                 DEBUG('e', "Error: address to filename string is null.\n");
@@ -103,6 +103,7 @@ SyscallHandler(ExceptionType _et)
             }
 
             DEBUG('e', "`Create` requested for file `%s`.\n", filename);
+            // filesystem->Create(filename);
             break;
         }
 

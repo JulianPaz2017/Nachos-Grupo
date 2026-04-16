@@ -27,15 +27,19 @@
 /// Initialize the list of ready but not running threads to empty.
 Scheduler::Scheduler()
 {
-    for (int i=0; i < MAX_PRIORITY; i++)
+    readyList = new List<Thread *>* [MAX_PRIORITY+1];
+
+    for (int i=0; i <= MAX_PRIORITY; i++)
         readyList[i] = new List<Thread *>;
 }
 
 /// De-allocate the list of ready threads.
 Scheduler::~Scheduler()
 {
-    for (int i=0; i < MAX_PRIORITY; i++)
+    for (int i=0; i <= MAX_PRIORITY; i++)
         delete readyList[i];
+
+    delete [] readyList;
 }
 
 /// Mark a thread as ready, but not running.

@@ -323,9 +323,9 @@ Thread::StackAllocate(VoidFunctionPtr func, void *arg)
 }
 
 void
-Thread::SetPriority(unsigned priority)
+Thread::SetPriority(unsigned newPriority)
 {
-    this->priority = priority;
+    this->priority = newPriority;
 }
 
 unsigned

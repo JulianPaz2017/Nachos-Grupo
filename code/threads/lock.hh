@@ -65,6 +65,7 @@ private:
     // Add other needed fields here.
 
     #ifdef PLANCHA2
+    unsigned threadPriority;
     Semaphore *lock;
     Thread *heldedBy;
     #endif /* PLANCHA2 */

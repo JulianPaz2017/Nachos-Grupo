@@ -55,9 +55,14 @@ Lock::Acquire()
 
     // Si el hilo que llama a Acquire no posee el lock, espera para obtenerlo
     DEBUG('t', "The thread called '%s' will acquire the lock called '%s'\n", currentThread->GetName(), name);
+    
+    // Invertimos la prioridad en caso de que un hilo con mayor prioridad
+    // que el thread que tiene el lock, desea tomar el lock
+    // if (currentThread->GetPriority() > heldedBy->GetPriority()) currentThread->SetPriority(currentThread->GetPriority());
+
     lock->P();
     DEBUG('t', "'%s' finally acquire '%s'\n", currentThread->GetName(), name);
-
+    threadPriority = currentThread->GetPriority();
     heldedBy = currentThread;
 
     #endif /* PLANCHA2 */
@@ -74,6 +79,10 @@ Lock::Release()
 
     // Si el hilo posee el lock, entonces lo libera
     DEBUG('t', "The thread called '%s' will release the lock called '%s'\n", currentThread->GetName(), name);
+
+    // Cambiar prioridad.
+    // currentThread->SetPriority(threadPriority);
+
     lock->V();
     DEBUG('t', "'%s' release '%s'\n", currentThread->GetName(), name);
 
