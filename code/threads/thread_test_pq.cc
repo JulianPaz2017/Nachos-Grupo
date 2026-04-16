@@ -15,9 +15,9 @@ ThreadTestPriorityQueue()
 {
     printf("===` Priority Queues Test ===\n");
 
-    Thread *a = new Thread("A", true, 0);
+    Thread *a = new Thread("A", true, 5);
     Thread *b = new Thread("B", true, 9);
-    Thread *c = new Thread("C", true, 3);
+    Thread *c = new Thread("C", true, 6);
     Thread *d = new Thread("D", true, 8);
 
     a->Fork(PrintName, NULL);
