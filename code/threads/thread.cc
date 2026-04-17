@@ -302,8 +302,27 @@ Thread::StackAllocate(VoidFunctionPtr func, void *arg)
     stack = (uintptr_t *)
               SystemDep::AllocBoundedArray(STACK_SIZE * sizeof *stack);
 
+    /*
+        CUIDADO: COMENTE ESTO
     // Stacks in x86 work from high addresses to low addresses.
     stackTop = stack + STACK_SIZE - 4;  // -4 to be on the safe side!
+
+    Y AGREGUE LO QUE SIGUE:
+    */
+
+    
+   /* ACA EMPECE A AGREGAR: */
+    stackTop = stack + STACK_SIZE;
+
+    // Alinear a 16 bytes
+    stackTop = (uintptr_t *) ((uintptr_t) stackTop & ~0xF);
+
+    // Reservar espacio para el return address
+    *--stackTop = (uintptr_t) ThreadRoot;
+
+    /* HASTA ACA AGREGUE */
+
+
 
     // x86 passes the return address on the stack.  In order for `SWITCH` to
     // go to `ThreadRoot` when we switch to this thread, the return address
