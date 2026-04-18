@@ -225,17 +225,15 @@ Thread::Yield()
     ASSERT(this == currentThread);
 
     DEBUG('t', "Yielding thread \"%s\"\n", GetName());
-
-    // Degradamos la prioridad del proceso que se estaba ejecutando.
-    // Lo hacemos aquí para que al entrar en la lista de listos (ReadyToRun)
-    // ya tenga la prioridad degradada y no haya inconsistencias.
-    unsigned p = GetPriority();
-    SetPriority((p == 0) ? 0 : (p - 1));
     
     Thread *nextThread = scheduler->FindNextToRun();
     if (nextThread != nullptr) {
-        scheduler->ReadyToRun(this);
-        scheduler->Run(nextThread);
+        // Degradar ANTES de insertar en la lista
+        unsigned p = this->GetPriority();
+        this->SetPriority((p == 0) ? 0 : (p - 1));
+
+        scheduler->ReadyToRun(this);   // ahora entra con la prioridad correcta
+        scheduler->Run(nextThread);    // ya no toca la prioridad del oldThread
     }
 
     interrupt->SetLevel(oldLevel);
