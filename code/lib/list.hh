@@ -304,7 +304,7 @@ List<Item>::SortedPop(int *keyPtr)
     if (IsEmpty()) {
         return Item();
     }
-    
+
     Item thing = first->item;
     if (first == last) {  // List had one item, now has none.
         first = nullptr;
