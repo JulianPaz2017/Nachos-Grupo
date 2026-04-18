@@ -5,9 +5,7 @@
 #include "lib/utility.hh"
 #include <stdio.h>
 
-bool cFinished;
 static Lock *mutex;
-
 
 void
 functionA(void * arg)
@@ -32,24 +30,23 @@ functionC(void * arg)
   DEBUG('q', "El thread %s soltó el lock\n", currentThread->GetName());
 }
 
-void ThreadTestInvertionPriority() {
+void ThreadTestInvertionPriority() 
+{
   printf("=== Invertion Priority Test ===\n");
 
   mutex = new Lock("Lock");
-  cFinished = false;
 
   Thread *a = new Thread("A", true, 5);
   Thread *c = new Thread("C", true, 9);
 
   a->Fork(functionA, NULL);
-
+  
   currentThread->Yield();
-
+  
   c->Fork(functionC, NULL);
-
+  
   a->Join();
   c->Join();
 
   delete mutex;
-  return;
 }

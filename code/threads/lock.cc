@@ -30,6 +30,7 @@ Lock::Lock(const char *debugName)
     name = debugName;
     lock = new Semaphore(debugName, 1);
     heldedBy = NULL;
+    threadPriority = 9;
     #endif /* PLANCHA2 */
 }
 
@@ -67,10 +68,14 @@ Lock::Acquire()
         // Si la prioridad del thread que tiene el lock es mayor
         // invertimos la prioridad
         if (currentThreadPriority > heldedByPriority) {
-            // Lo enconlamos en la cola de prioridad correcta, en caso
-            // de que no esté encolado correctamente
-            if (scheduler->Search(heldedBy, heldedByPriority))
-                scheduler->Dequeue(heldedBy, heldedByPriority);
+            // Lo desenconcolamos de la cola de prioridad en la que esté,
+            // ya que su prioridad va a cambiar.
+            for (unsigned i = 0; i <= MAX_PRIORITY; i++) {
+                if (scheduler->Search(heldedBy, i)) {
+                    scheduler->Dequeue(heldedBy, i);
+                    break;
+                }
+            }
 
             heldedBy->SetPriority(currentThreadPriority);
             scheduler->ReadyToRun(heldedBy);

@@ -109,10 +109,6 @@ Scheduler::Run(Thread *nextThread)
     
     oldThread->CheckOverflow();  // Check if the old thread had an undetected
     // stack overflow.
-    
-    // Degradamos la prioridad del proceso que se estaba ejecutando
-    unsigned priority = oldThread->GetPriority();
-    oldThread->SetPriority((priority == 0)? 0:(priority-1));
 
     currentThread = nextThread;  // Switch to the next thread.
     currentThread->SetStatus(RUNNING);  // `nextThread` is now running.
