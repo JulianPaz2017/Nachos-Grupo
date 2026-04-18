@@ -56,9 +56,28 @@ Lock::Acquire()
     // Si el hilo que llama a Acquire no posee el lock, espera para obtenerlo
     DEBUG('t', "The thread called '%s' will acquire the lock called '%s'\n", currentThread->GetName(), name);
     
-    // Invertimos la prioridad en caso de que un hilo con mayor prioridad
-    // que el thread que tiene el lock, desea tomar el lock
-    // if (currentThread->GetPriority() > heldedBy->GetPriority()) currentThread->SetPriority(currentThread->GetPriority());
+    // Desactivamos las interrupciones (para que no hayan race conditions)
+    IntStatus oldLevel = interrupt->SetLevel(INT_OFF);
+
+    // Si el lock está tomado, chequeamos la prioridad del thread que lo tomó
+    if (heldedBy) {
+        unsigned heldedByPriority = heldedBy->GetPriority();
+        unsigned currentThreadPriority = currentThread->GetPriority();
+
+        // Si la prioridad del thread que tiene el lock es mayor
+        // invertimos la prioridad
+        if (currentThreadPriority > heldedByPriority) {
+            // Lo enconlamos en la cola de prioridad correcta, en caso
+            // de que no esté encolado correctamente
+            if (scheduler->Search(heldedBy, heldedByPriority))
+                scheduler->Dequeue(heldedBy, heldedByPriority);
+
+            heldedBy->SetPriority(currentThreadPriority);
+            scheduler->ReadyToRun(heldedBy);
+        }
+    }
+    // Volvemos a activar el nivel que tenía anteriormente
+    interrupt->SetLevel(oldLevel);
 
     lock->P();
     DEBUG('t', "'%s' finally acquire '%s'\n", currentThread->GetName(), name);
@@ -81,7 +100,7 @@ Lock::Release()
     DEBUG('t', "The thread called '%s' will release the lock called '%s'\n", currentThread->GetName(), name);
 
     // Cambiar prioridad.
-    // currentThread->SetPriority(threadPriority);
+    currentThread->SetPriority(threadPriority);
 
     lock->V();
     DEBUG('t', "'%s' release '%s'\n", currentThread->GetName(), name);

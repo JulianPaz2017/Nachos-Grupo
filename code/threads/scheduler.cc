@@ -168,3 +168,16 @@ Scheduler::Print()
         readyList[i]->Apply(ThreadPrint);
     }
 }
+
+void 
+Scheduler::Dequeue(Thread *thread, unsigned priorityQueue){
+    ASSERT(this->readyList && thread && (priorityQueue <= MAX_PRIORITY));
+    readyList[priorityQueue]->Remove(thread);   
+}
+
+bool 
+Scheduler::Search(Thread *thread, unsigned priorityQueue) 
+{
+    ASSERT(this->readyList && thread && (priorityQueue <= MAX_PRIORITY));
+    return readyList[priorityQueue]->Has(thread);
+}

@@ -35,6 +35,13 @@ public:
     /// Cause `nextThread` to start running.
     void Run(Thread *nextThread);
 
+    // Search a thread in a priority queue, and returns true if it
+    // is in that priority queue and false if not.
+    bool Search(Thread *thread, unsigned priorityQueue);
+
+    /// Dequeue a process from a specific priority queue
+    void Dequeue(Thread *thread, unsigned priorityQueue);
+
     // Print contents of ready list.
     void Print();
 
