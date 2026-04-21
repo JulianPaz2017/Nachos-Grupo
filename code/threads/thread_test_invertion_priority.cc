@@ -5,28 +5,29 @@
 #include "lib/utility.hh"
 #include <stdio.h>
 
-static Lock *mutex;
+static Lock *synchLock; // Protege la variable value
+
 
 void
-functionA(void * arg)
+functionA(void*)
 {
   DEBUG('q', "Ejecutando %s\n", currentThread->GetName());
 
-  mutex->Acquire();
+  synchLock->Acquire();
   DEBUG('q', "El thread %s tomó el lock\n", currentThread->GetName());
   currentThread->Yield();
-  mutex->Release();
+  synchLock->Release();
   DEBUG('q', "El thread %s soltó el lock\n", currentThread->GetName());
 }
 
 void
-functionC(void * arg)
+functionC(void*)
 {
   DEBUG('q', "Ejecutando %s\n", currentThread->GetName());
 
-  mutex->Acquire();
+  synchLock->Acquire();
   DEBUG('q', "El thread %s tomó el lock\n", currentThread->GetName());
-  mutex->Release();
+  synchLock->Release();
   DEBUG('q', "El thread %s soltó el lock\n", currentThread->GetName());
 }
 
@@ -34,7 +35,7 @@ void ThreadTestInvertionPriority()
 {
   printf("=== Invertion Priority Test ===\n");
 
-  mutex = new Lock("Lock");
+  synchLock = new Lock("Lock");
 
   Thread *a = new Thread("A", true, 5);
   Thread *c = new Thread("C", true, 9);
@@ -48,5 +49,5 @@ void ThreadTestInvertionPriority()
   a->Join();
   c->Join();
 
-  delete mutex;
+  delete synchLock;
 }

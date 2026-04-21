@@ -57,32 +57,34 @@ Lock::Acquire()
     // Si el hilo que llama a Acquire no posee el lock, espera para obtenerlo
     DEBUG('t', "The thread called '%s' will acquire the lock called '%s'\n", currentThread->GetName(), name);
     
-    // Desactivamos las interrupciones (para que no hayan race conditions)
-    IntStatus oldLevel = interrupt->SetLevel(INT_OFF);
+//    // Desactivamos las interrupciones (para que no hayan race conditions)
+//    IntStatus oldLevel = interrupt->SetLevel(INT_OFF);
+//
+//    // Si el lock está tomado, chequeamos la prioridad del thread que lo tomó
+//    if (heldedBy) {
+//        unsigned heldedByPriority = heldedBy->GetPriority();
+//        unsigned currentThreadPriority = currentThread->GetPriority();
+//
+//        // Si la prioridad del thread que tiene el lock es mayor
+//        // invertimos la prioridad
+//        if (currentThreadPriority > heldedByPriority) {
+//            // Lo desenconcolamos de la cola de prioridad en la que esté,
+//            // ya que su prioridad va a cambiar.
+//            for (unsigned i = 0; i <= MAX_PRIORITY; i++) {
+//                if (scheduler->Search(heldedBy, i)) {
+//                    scheduler->Dequeue(heldedBy, i);
+//                    break;
+//                }
+//            }
+//
+//            heldedBy->SetPriority(currentThreadPriority);
+//            scheduler->ReadyToRun(heldedBy);
+//        }
+//    }
+//    // Volvemos a activar el nivel que tenía anteriormente
+//    interrupt->SetLevel(oldLevel);
 
-    // Si el lock está tomado, chequeamos la prioridad del thread que lo tomó
-    if (heldedBy) {
-        unsigned heldedByPriority = heldedBy->GetPriority();
-        unsigned currentThreadPriority = currentThread->GetPriority();
-
-        // Si la prioridad del thread que tiene el lock es mayor
-        // invertimos la prioridad
-        if (currentThreadPriority > heldedByPriority) {
-            // Lo desenconcolamos de la cola de prioridad en la que esté,
-            // ya que su prioridad va a cambiar.
-            for (unsigned i = 0; i <= MAX_PRIORITY; i++) {
-                if (scheduler->Search(heldedBy, i)) {
-                    scheduler->Dequeue(heldedBy, i);
-                    break;
-                }
-            }
-
-            heldedBy->SetPriority(currentThreadPriority);
-            scheduler->ReadyToRun(heldedBy);
-        }
-    }
-    // Volvemos a activar el nivel que tenía anteriormente
-    interrupt->SetLevel(oldLevel);
+    scheduler->InvestPriority(heldedBy);
 
     lock->P();
     DEBUG('t', "'%s' finally acquire '%s'\n", currentThread->GetName(), name);

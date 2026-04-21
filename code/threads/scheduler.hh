@@ -45,6 +45,9 @@ public:
     // Print contents of ready list.
     void Print();
 
+    // invest the priotiry of a thread
+    void InvestPriority(Thread *t);
+
 private:
 
     // Queue of threads that are ready to run, but not running.

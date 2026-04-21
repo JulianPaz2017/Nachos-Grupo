@@ -177,3 +177,40 @@ Scheduler::Search(Thread *thread, unsigned priorityQueue)
     ASSERT(this->readyList && thread && (priorityQueue <= MAX_PRIORITY));
     return readyList[priorityQueue]->Has(thread);
 }
+
+void
+Scheduler::InvestPriority(Thread *t)
+{
+    // Desactivamos las interrupciones (para que no hayan race conditions)
+    IntStatus oldLevel = interrupt->SetLevel(INT_OFF);
+
+    // Si el lock está tomado, chequeamos la prioridad del thread que lo tomó
+    if (t) {
+        unsigned tPriority = t->GetPriority();
+        unsigned currentThreadPriority = currentThread->GetPriority();
+
+        // Si la prioridad del thread actual es mayora la del thread t,
+        // invertimos la prioridad
+        if (currentThreadPriority > tPriority) {
+
+            bool isQueue = false;
+
+            // Lo desenconcolamos de la cola de prioridad en la que esté,
+            // ya que su prioridad va a cambiar.
+            for (unsigned i = 0; i <= MAX_PRIORITY; i++) {
+                if (scheduler->Search(t, i)) {
+                    isQueue = true;
+                    scheduler->Dequeue(t, tPriority);
+                }
+            }
+         
+            t->SetPriority(currentThreadPriority);
+
+            if (isQueue)
+                scheduler->ReadyToRun(t);
+        }
+    }
+
+    // Volvemos a activar el nivel que tenía anteriormente
+    interrupt->SetLevel(oldLevel);
+}
