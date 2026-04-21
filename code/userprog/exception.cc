@@ -103,13 +103,17 @@ SyscallHandler(ExceptionType _et)
             }
 
             DEBUG('e', "`Create` requested for file `%s`.\n", filename);
-            // filesystem->Create(filename);
+            ASSERT(fileSystem->Create(filename,1000)); // Agregado en el video x Esteban
+
             break;
         }
 
         case SC_CLOSE: {
-            int fid = machine->ReadRegister(4);
+            int fid = machine->ReadRegister(4); //a0
             DEBUG('e', "`Close` requested for id %u.\n", fid);
+            //fileSystema->Close(getOpenFile(fid));  // Hacer bien. Esta es la idea que daba en el video
+            //openFile.close();
+            //delete openfile;
             break;
         }
 
