@@ -40,6 +40,8 @@
 
 
 #include "lib/utility.hh"
+#include "lib/table.hh"
+class OpenFile; 
 
 #ifdef USER_PROGRAM
 #include "machine/machine.hh"
@@ -98,7 +100,6 @@ private:
     uintptr_t machineState[MACHINE_STATE_SIZE];
 
 public:
-
     /// Initialize a `Thread` with priority.
     Thread(const char *debugName, bool joinableValue = false, unsigned priorityValue = DEFAULT_PRIORITY);
 
@@ -127,6 +128,16 @@ public:
 
     /// Check if thread has overflowed its stack.
     void CheckOverflow() const;
+
+    /// Add an opened file to OPT. It returns the file ID of
+    // the opened file
+    int AddOpenFile(OpenFile* openFile);
+
+    /// Returns the opened file related to fID from OPT 
+    OpenFile *GetOpenFile(int fID);
+
+    /// Remove the opened file related to fID from OPT
+    OpenFile *RemoveOpenFile(int fID);
 
     void SetStatus(ThreadStatus st);
 
@@ -161,6 +172,9 @@ private:
 
     // Priority for a thread
     unsigned priority;
+
+    // Table with opened files (OPT)
+    Table<OpenFile*> *openFiles;
 
 #ifdef USER_PROGRAM
     /// User-level CPU register state.

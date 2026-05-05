@@ -92,59 +92,175 @@ SyscallHandler(ExceptionType _et)
             interrupt->Halt();
             break;
 
-        case SC_CREATE: { // Create(char *filename);
+        case SC_CREATE: { // int Create(const char *name)
             int filenameAddr = machine->ReadRegister(4);
+
+            // Si la dirección de memoria es nullptr, error
             if (filenameAddr == 0) {
                 DEBUG('e', "Error: address to filename string is null.\n");
+                machine->WriteRegister(2, -1);
+                break;
             }
 
             char filename[FILE_NAME_MAX_LEN + 1];
+
+            // Si el tamaño del nombre del archivo es mayor al tamaño máximo, error
             if (!ReadStringFromUser(filenameAddr,
                                     filename, sizeof filename)) {
                 DEBUG('e', "Error: filename string too long (maximum is %u bytes).\n",
                       FILE_NAME_MAX_LEN);
+                machine->WriteRegister(2, -1);
+                break;
             }
 
             DEBUG('e', "`Create` requested for file `%s`.\n", filename);
-            ASSERT(fileSystem->Create(filename,DEFAULT_FILE_SIZE)); // Agregado en el video x Esteban
+
+            // Creamos el archivo exitosamente y devolvemos 0
+            if (fileSystem->Create(filename,DEFAULT_FILE_SIZE)) {
+                machine->WriteRegister(2, 0);
+            }
+
+            // En caso contrario error
+            else {
+                DEBUG('e', "Error: fileSystem->Create fails for file `%s`.\n", filename);
+                machine->WriteRegister(2, -1);
+            }
 
             break;
         }
 
-        case SC_OPEN :{//Open(char *filename)
+        case SC_OPEN: {// OpenFileId Open(const char *name)
             // Obtenemos el nombre del archivo que queremos abrir
             int filenameAddr = machine->ReadRegister(4);
-
+            
+            // Si la dirección de memoria es nullptr, error
             if (filenameAddr == 0) {
                 DEBUG('e', "Error: address to filename string is null.\n");
+                machine->WriteRegister(2, -1);
+                break;
             }
 
             char filename[FILE_NAME_MAX_LEN + 1];
+
+            // Si el tamaño del nombre del archivo es mayor al tamaño máximo, error
             if (!ReadStringFromUser(filenameAddr,
                                     filename, sizeof filename)) {
                 DEBUG('e', "Error: filename string too long (maximum is %u bytes).\n",
                       FILE_NAME_MAX_LEN);
+                machine->WriteRegister(2, -1);
+                break;
             }
 
             DEBUG('e', "`Open` requested for file `%s`.\n", filename); 
             
-            // Abrimos el archivo:
-            OpenFile *fileAddr = fileSystem->Open(filename);
+            // Abrimos el archivo
+            OpenFile *openFile = fileSystem->Open(filename);
 
-            
-            
-            // Devolvemos al usaurio el OpenFile que obtuvimos al hacer Open 
-            machine->WriteRegister(2,(int)fileAddr);
+            // Si el archivo no se pudo abrir, devolvemos -1
+            if (openFile == nullptr) {
+                DEBUG('e', "Error: fileSystem->Open fails for file `%s`.\n", filename);
+                machine->WriteRegister(2, -1);
+            }
+            else {
+                // Guardamos el archivo en la tabla de archivos abiertos
+                int fileId = currentThread->AddOpenFile(openFile);
+                
+                // Devolvemos al usaurio el fileID que obtuvimos al añadir el archivo
+                machine->WriteRegister(2, fileId);
+            }
             
             break;
         }
 
-        case SC_CLOSE: {
-            int fid = machine->ReadRegister(4); //a0
-            DEBUG('e', "`Close` requested for id %u.\n", fid);
-            //fileSystema->Close(getOpenFile(fid));  // Hacer bien. Esta es la idea que daba en el video
-            //openFile.close();
-            //delete openfile;
+        case SC_CLOSE: {// int Close(OpenFileId id)
+            // Obtenemos el fileID del archivo que queremos cerrar
+            int fileID = machine->ReadRegister(4); 
+
+            // Si el fileID es menor a cero, error
+            if (fileID < 0) {
+                DEBUG('e', "Error: invalid close, the fileID is lower than 0: `%d`.\n", fileID);
+                machine->WriteRegister(2, -1);
+                break;
+            }
+
+            DEBUG('e', "`Close` requested for id %u.\n", fileID);
+
+            // Buscamos el fileID dentro de la tabla de procesos 
+            // del thread
+            OpenFile * openFile = currentThread->RemoveOpenFile(fileID);
+
+            // Si openFile == nullptr, devolvemos -1
+            if (openFile == nullptr) {
+                DEBUG('e', "Error: fileID `%d` is not related to an opened file.\n", fileID);
+                machine->WriteRegister(2, -1);
+            }
+
+            // Cerramos el openFile
+            delete openFile;
+
+            // Devolvemos 0 para indicar que se cerró con éxito
+            machine->WriteRegister(2, 0);
+            break;
+        }
+
+        case SC_REMOVE: {// int Remove(const char *name)
+            // Obtenemos el nombre del archivo que queremos abrir
+            int filenameAddr = machine->ReadRegister(4);
+            
+            // Si la dirección de memoria es nullptr, error
+            if (filenameAddr == 0) {
+                DEBUG('e', "Error: address to filename string is null.\n");
+                machine->WriteRegister(2, -1);
+                break;
+            }
+
+            char filename[FILE_NAME_MAX_LEN + 1];
+
+            // Si el tamaño del nombre del archivo es mayor al tamaño máximo, error
+            if (!ReadStringFromUser(filenameAddr,
+                                    filename, sizeof filename)) {
+                DEBUG('e', "Error: filename string too long (maximum is %u bytes).\n",
+                      FILE_NAME_MAX_LEN);
+                machine->WriteRegister(2, -1);
+                break;
+            }
+
+            DEBUG('e', "`Remove` requested for file `%s`.\n", filename); 
+            
+            // NO PODEMOS CERRAR EL ARCHIVO YA QUE NO TENEMOS EL fileID
+            // Removemos el archivo de la lista de archivos abiertos
+            //OpenFile * openFile = currentThread->RemoveOpenFile(fileID);
+
+            // Si el fileID está asociado a un archivo abierto, lo cerramos
+            //if (openFile != nullptr) delete openFile;
+
+            // Eliminamos el archivo
+            if (fileSystem->Remove(filename)) {
+                DEBUG('e', "Error: fileSystem->Remove fails for file `%s`.\n", filename);
+                machine->WriteRegister(2, -1);
+                break;
+            }
+
+            // En caso contrario devolvemos 0 al usuarip
+            machine->WriteRegister(2,0);
+            
+            break;
+        }
+        
+        case SC_READ: {// int Read(char *buffer, int size, OpenFileId id)
+            // Obtenemos los argumentos de la función
+            int bufferAddr = machine->ReadRegister(4);
+            int sizeBuffer = machine->ReadRegister(5);
+            int fileID     = machine->ReadRegister(6);
+
+            
+
+            DEBUG('e', "`Read` requested for file .\n"); 
+            break;
+        }
+        
+        case SC_WRITE: {
+            DEBUG('e', "`Write` requested for file .\n"); 
             break;
         }
 

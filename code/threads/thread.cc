@@ -59,6 +59,9 @@ Thread::Thread(const char *threadName, bool joinableValue, unsigned priorityValu
     // Seteamos la prioridad por defecto
     priority = priorityValue;
 
+    // Creamos la tabla de archivos abiertos
+    openFiles = new Table<OpenFile*>();
+
 #ifdef USER_PROGRAM
     space    = nullptr;
 #endif
@@ -84,6 +87,9 @@ Thread::~Thread()
     if (joinSem != nullptr) {
         delete joinSem;
     }
+
+    // Borramos la tabla de archivos abiertos
+    delete openFiles;
 }
 
 /// Invoke `(*func)(arg)`, allowing caller and callee to execute
@@ -324,6 +330,25 @@ Thread::StackAllocate(VoidFunctionPtr func, void *arg)
     machineState[InitialPCState]  = (uintptr_t) func;
     machineState[InitialArgState] = (uintptr_t) arg;
     machineState[WhenDonePCState] = (uintptr_t) ThreadFinish;
+}
+
+int 
+Thread::AddOpenFile(OpenFile* openFile) 
+{
+    ASSERT(openFile == nullptr);
+    return openFiles->Add(openFile);
+}
+
+OpenFile *
+Thread::GetOpenFile(int fID)
+{
+    return openFiles->Get(fID);
+}
+
+OpenFile *
+Thread::RemoveOpenFile(int fID)
+{
+    return openFiles->Remove(fID);
 }
 
 void
