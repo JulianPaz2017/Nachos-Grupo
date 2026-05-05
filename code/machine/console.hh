@@ -3,7 +3,7 @@
 /// A terminal has two parts -- a keyboard input, and a display output, each
 /// of which produces/accepts characters sequentially.
 ///
-/// The console hardware device is asynchronous.  When a character is written
+/// The  hardware device is asynchronous.  When a character is written
 /// to the device, the routine returns immediately, and an interrupt handler
 /// is called later when the I/O completes.  For reads, an interrupt handler
 /// is called when a character arrives.
@@ -20,14 +20,14 @@
 /// All rights reserved.  See `copyright.h` for copyright notice and
 /// limitation of liability and disclaimer of warranty provisions.
 
-#ifndef NACHOS_MACHINE_CONSOLE__HH
-#define NACHOS_MACHINE_CONSOLE__HH
+#ifndef NACHOS_MACHINE___HH
+#define NACHOS_MACHINE___HH
 
 
 #include "lib/utility.hh"
 
 
-/// The following class defines a hardware console device.
+/// The following class defines a hardware  device.
 ///
 /// Input and output to the device is simulated by reading and writing to
 /// UNIX files (`readFile` and `writeFile`).
@@ -36,24 +36,24 @@
 /// called when a character has arrived, ready to be read in.  The interrupt
 /// handler `writeDone` is called when an output character has been “put”, so
 /// that the next character can be written.
-class Console {
+class  {
 public:
 
-    /// Initialize the hardware console device.
-    Console(const char *readFile, const char *writeFile,
+    /// Initialize the hardware  device.
+    (const char *readFile, const char *writeFile,
             VoidFunctionPtr readAvail, VoidFunctionPtr writeDone,
             void *callArg);
 
-    /// Clean up console emulation.
-    ~Console();
+    /// Clean up  emulation.
+    ~();
 
     /// External interface -- Nachos kernel code can call these.
 
-    /// Write `ch` to the console display, and return immediately.
+    /// Write `ch` to the  display, and return immediately.
     /// `writeHandler` is called when the I/O completes.
     void PutChar(char ch);
 
-    /// Poll the console input.  If a char is available, return it.
+    /// Poll the  input.  If a char is available, return it.
     /// Otherwise, return EOF.  `readHandler` is called whenever there is a
     /// char to be gotten.
     char GetChar();
@@ -79,4 +79,4 @@ public:
 };
 
 
-#endif  // CONSOLE_H
+#endif  // _H

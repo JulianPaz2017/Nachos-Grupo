@@ -35,6 +35,7 @@
 #ifndef NACHOS_FILESYS_FILESYSTEM__HH
 #define NACHOS_FILESYS_FILESYSTEM__HH
 
+#define DEFAULT_FILE_SIZE 1024
 
 #include "open_file.hh"
 
@@ -118,7 +119,7 @@ public:
     ~FileSystem();
 
     /// Create a file (UNIX `creat`).
-    bool Create(const char *name, unsigned initialSize);
+    bool Create(const char *name, unsigned initialSize=DEFAULT_FILE_SIZE);
 
     /// Open a file (UNIX `open`).
     OpenFile *Open(const char *name);

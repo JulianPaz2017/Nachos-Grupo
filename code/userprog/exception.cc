@@ -27,7 +27,10 @@
 #include "filesys/directory_entry.hh"
 #include "threads/system.hh"
 
+#include "filesys/file_system.hh"
+
 #include <stdio.h>
+
 
 
 static void
@@ -103,8 +106,36 @@ SyscallHandler(ExceptionType _et)
             }
 
             DEBUG('e', "`Create` requested for file `%s`.\n", filename);
-            ASSERT(fileSystem->Create(filename,1000)); // Agregado en el video x Esteban
+            ASSERT(fileSystem->Create(filename,DEFAULT_FILE_SIZE)); // Agregado en el video x Esteban
 
+            break;
+        }
+
+        case SC_OPEN :{//Open(char *filename)
+            // Obtenemos el nombre del archivo que queremos abrir
+            int filenameAddr = machine->ReadRegister(4);
+
+            if (filenameAddr == 0) {
+                DEBUG('e', "Error: address to filename string is null.\n");
+            }
+
+            char filename[FILE_NAME_MAX_LEN + 1];
+            if (!ReadStringFromUser(filenameAddr,
+                                    filename, sizeof filename)) {
+                DEBUG('e', "Error: filename string too long (maximum is %u bytes).\n",
+                      FILE_NAME_MAX_LEN);
+            }
+
+            DEBUG('e', "`Open` requested for file `%s`.\n", filename); 
+            
+            // Abrimos el archivo:
+            OpenFile *fileAddr = fileSystem->Open(filename);
+
+            
+            
+            // Devolvemos al usaurio el OpenFile que obtuvimos al hacer Open 
+            machine->WriteRegister(2,(int)fileAddr);
+            
             break;
         }
 
