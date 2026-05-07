@@ -33,7 +33,6 @@
 #define SC_WRITE   15
 #define SC_EXEC2   16
 
-
 #ifndef IN_ASM
 
 /// The system call interface.  These are the operations the Nachos kernel

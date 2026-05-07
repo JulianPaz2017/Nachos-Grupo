@@ -58,8 +58,8 @@ char
 SynchConsole::GetChar()
 {
   readersLock->Acquire();
-  char ch = console->GetChar();
-  readersSemaphore->P();
+  readersSemaphore->P();  // Esperar a que la interrupción avise que hay un char disponible
+  char ch = console->GetChar();  // Recién ahora leer el carácter del buffer
   readersLock->Release();
 
   return ch;

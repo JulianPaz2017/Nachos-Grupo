@@ -17,7 +17,21 @@ main(void)
 {
     Create("test.txt");
     OpenFileId o = Open("test.txt");
+
     Write("Hello world\n",12,o);
     Close(o);
+    
+    OpenFileId u = Open("test.txt");
+
+    char buf[255];
+    Read(buf,255,u);
+    
+    Write("Se leyó:",255,1);
+    Write(buf,255,1);
+
+    Close(u);
+    Remove("test.txt");
+
+
     return 0;
 }
