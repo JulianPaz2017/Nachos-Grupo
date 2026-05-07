@@ -253,6 +253,28 @@ SyscallHandler(ExceptionType _et)
             int sizeBuffer = machine->ReadRegister(5);
             int fileID     = machine->ReadRegister(6);
 
+            // Si la dirección de memoria del buffer es nullptr, error
+            if (bufferAddr == 0) {
+                DEBUG('e', "Error: address to buffer is null.\n");
+                machine->WriteRegister(2, -1);
+                break;
+            }
+
+            if (fileID == CONSOLE_INPUT) {
+                
+            }
+
+            char filename[FILE_NAME_MAX_LEN + 1];
+
+            // Si el tamaño del nombre del archivo es mayor al tamaño máximo, error
+            if (!ReadStringFromUser(filenameAddr,
+                                    filename, sizeof filename)) {
+                DEBUG('e', "Error: filename string too long (maximum is %u bytes).\n",
+                      FILE_NAME_MAX_LEN);
+                machine->WriteRegister(2, -1);
+                break;
+            }
+
             
 
             DEBUG('e', "`Read` requested for file .\n"); 

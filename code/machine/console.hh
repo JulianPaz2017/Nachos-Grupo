@@ -36,16 +36,16 @@
 /// called when a character has arrived, ready to be read in.  The interrupt
 /// handler `writeDone` is called when an output character has been “put”, so
 /// that the next character can be written.
-class  {
+class Console{
 public:
 
     /// Initialize the hardware  device.
-    (const char *readFile, const char *writeFile,
+    Console(const char *readFile, const char *writeFile,
             VoidFunctionPtr readAvail, VoidFunctionPtr writeDone,
             void *callArg);
 
     /// Clean up  emulation.
-    ~();
+    ~Console();
 
     /// External interface -- Nachos kernel code can call these.
 
