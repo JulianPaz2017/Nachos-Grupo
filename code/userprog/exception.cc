@@ -277,10 +277,18 @@ SyscallHandler(ExceptionType _et)
                 if (fileID == CONSOLE_INPUT) {
                     // Leemos de a un caracter hasta encontrar un '\n' o EOF o bien hasta
                     // leer 'sizeBuffer' caracteres
-                    for(char c = synchConsole->GetChar(); c != '\n' && c != EOF && 
-                        bytesReaded < sizeBuffer; bytesReaded++, c=synchConsole->GetChar()) {
-                        buf[bytesReaded] = c;                                  
-                    }
+                    DEBUG('e', "hole\n");
+                    char c;
+
+                    do {
+                        c = synchConsole->GetChar();
+                        DEBUG('e', "charReaded %c\n", c);
+                        buf[bytesReaded] = c;
+                        bytesReaded++; 
+
+                    } while (c != '\n' && c != EOF && bytesReaded < sizeBuffer);
+                    
+                    DEBUG('e', "ultimo caracter %c\n", c);
                 }
                 // En el caso contrario, leemos desde el archivo indicado
                 else {
@@ -304,6 +312,7 @@ SyscallHandler(ExceptionType _et)
                 machine->WriteRegister(2, bytesReaded); 
 
                 delete[] buf;
+                DEBUG('e', "termine de leer \n");
             }
 
             break;
@@ -326,7 +335,7 @@ SyscallHandler(ExceptionType _et)
 
             // Si se desea leer de la salida estánda, devolvemos error
             if (fileID == CONSOLE_INPUT) {
-                DEBUG('e', "Error: sc_read from strin.\n");
+                DEBUG('e', "Error: sc_write from stdin.\n");
                 machine->WriteRegister(2, -1);
                 break;
             }

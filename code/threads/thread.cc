@@ -62,6 +62,14 @@ Thread::Thread(const char *threadName, bool joinableValue, unsigned priorityValu
     // Creamos la tabla de archivos abiertos
     openFiles = new Table<OpenFile*>();
 
+    // Reservamos los slots 0 y 1 para stdin/stdout (CONSOLE_INPUT/CONSOLE_OUTPUT).
+    // Se usa nullptr porque fd 0 y 1 son manejados directamente en exception.cc
+    // a través de synchConsole, sin necesidad de un OpenFile* real.
+    int i = openFiles->Add(nullptr);
+    ASSERT(i == 0);
+    int j = openFiles->Add(nullptr);
+    ASSERT(j == 1);
+
 #ifdef USER_PROGRAM
     space    = nullptr;
 #endif
@@ -335,7 +343,6 @@ Thread::StackAllocate(VoidFunctionPtr func, void *arg)
 int 
 Thread::AddOpenFile(OpenFile* openFile) 
 {
-    ASSERT(openFile == nullptr);
     return openFiles->Add(openFile);
 }
 
