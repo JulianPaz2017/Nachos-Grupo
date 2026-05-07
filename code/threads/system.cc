@@ -40,6 +40,8 @@ SynchDisk *synchDisk;
 
 #ifdef USER_PROGRAM  // Requires either *FILESYS* or *FILESYS_STUB*.
 Machine *machine;  ///< User program memory and registers.
+Bitmap *usedPages = nullptr;              ///< Bitmap de marcos físicos usados.
+Table<Thread *> *processTable = nullptr;  ///< Tabla de procesos en ejecución.
 #endif
 
 // External definition, to allow us to take a pointer to this function.
@@ -193,6 +195,8 @@ Initialize(int argc, char **argv)
     
     machine = new Machine(d, numPhysicalPages);  // This must come first.
     SetExceptionHandlers();
+    usedPages = new Bitmap(machine->GetNumPhysicalPages());
+    processTable = new Table<Thread *>;
 #endif
 
 #ifdef FILESYS
@@ -217,6 +221,8 @@ Cleanup()
 
 #ifdef USER_PROGRAM
     delete machine;
+    delete usedPages;
+    delete processTable;
 #endif
 
 #ifdef FILESYS_NEEDED

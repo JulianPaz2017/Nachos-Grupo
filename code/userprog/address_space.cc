@@ -14,8 +14,11 @@
 
 
 /// First, set up the translation from program memory to physical memory.
-/// For now, this is really simple (1:1), since we are only uniprogramming,
-/// and we have a single unsegmented page table.
+
+/// Before it was a simple (1:1) mapping, since we were only uniprogramming,
+/// and we had a single unsegmented page table.
+/// Now we use the global `usedPages` bitmap to allocate physical frames, so that
+/// multiple programs can coexist in memory.
 AddressSpace::AddressSpace(OpenFile *executable_file)
 {
     ASSERT(executable_file != nullptr);
@@ -30,57 +33,72 @@ AddressSpace::AddressSpace(OpenFile *executable_file)
     numPages = DivRoundUp(size, PAGE_SIZE);
     size = numPages * PAGE_SIZE;
 
-    ASSERT(numPages <= machine->GetNumPhysicalPages());
-      // Check we are not trying to run anything too big -- at least until we
-      // have virtual memory.
+    // Verificar que hay suficientes marcos libres
+    ASSERT(numPages <= usedPages->CountClear());
 
     DEBUG('a', "Initializing address space, num pages %u, size %u\n",
           numPages, size);
 
-    // First, set up the translation.
+    // First, set up the translation: asignamos marcos físicos usando el bitmap.
 
     pageTable = new TranslationEntry[numPages];
     for (unsigned i = 0; i < numPages; i++) {
         pageTable[i].virtualPage  = i;
-          // For now, virtual page number = physical page number.
-        pageTable[i].physicalPage = i;
+        // Buscar un marco físico libre
+        int physPage = usedPages->Find();
+        ASSERT(physPage != -1);
+        pageTable[i].physicalPage = physPage;
         pageTable[i].valid        = true;
         pageTable[i].use          = false;
         pageTable[i].dirty        = false;
         pageTable[i].readOnly     = false;
-          // If the code segment was entirely on a separate page, we could
-          // set its pages to be read-only.
+
+        // Limpiamos solamente el marco físico asignado 
+        memset(&machine->mainMemory[physPage * PAGE_SIZE], 0, PAGE_SIZE);
     }
 
     char *mainMemory = machine->mainMemory;
 
-    // Zero out the entire address space, to zero the unitialized data
-    // segment and the stack segment.
-    memset(mainMemory, 0, size);
-
-    // Then, copy in the code and data segments into memory.
+    // Then, copy in the code and data segments into memory (we have to translate virtual addresses to physical addresses also)
     uint32_t codeSize = exe.GetCodeSize();
     uint32_t initDataSize = exe.GetInitDataSize();
     if (codeSize > 0) {
         uint32_t virtualAddr = exe.GetCodeAddr();
         DEBUG('a', "Initializing code segment, at 0x%X, size %u\n",
               virtualAddr, codeSize);
-        exe.ReadCodeBlock(&mainMemory[virtualAddr], codeSize, 0);
+        // Copiar bloque por bloque respetando la traducción de páginas
+        for (uint32_t j = 0; j < codeSize; j++) {
+            uint32_t vPage = (virtualAddr + j) / PAGE_SIZE;
+            uint32_t offset = (virtualAddr + j) % PAGE_SIZE;
+            uint32_t physAddr = pageTable[vPage].physicalPage * PAGE_SIZE + offset;
+            char byte;
+            exe.ReadCodeBlock(&byte, 1, j);
+            mainMemory[physAddr] = byte;
+        }
     }
     if (initDataSize > 0) {
         uint32_t virtualAddr = exe.GetInitDataAddr();
         DEBUG('a', "Initializing data segment, at 0x%X, size %u\n",
               virtualAddr, initDataSize);
-        exe.ReadDataBlock(&mainMemory[virtualAddr], initDataSize, 0);
+        for (uint32_t j = 0; j < initDataSize; j++) {
+            uint32_t vPage = (virtualAddr + j) / PAGE_SIZE;
+            uint32_t offset = (virtualAddr + j) % PAGE_SIZE;
+            uint32_t physAddr = pageTable[vPage].physicalPage * PAGE_SIZE + offset;
+            char byte;
+            exe.ReadDataBlock(&byte, 1, j);
+            mainMemory[physAddr] = byte;
+        }
     }
 
 }
 
 /// Deallocate an address space.
-///
-/// Nothing for now!
+/// Liberamos los marcos físicos en el bitmap global.
 AddressSpace::~AddressSpace()
 {
+    for (unsigned i = 0; i < numPages; i++) {
+        usedPages->Clear(pageTable[i].physicalPage);
+    }
     delete [] pageTable;
 }
 

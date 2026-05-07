@@ -24,13 +24,50 @@
 
 #include "transfer.hh"
 #include "syscall.h"
+#include "args.hh"
 #include "filesys/directory_entry.hh"
 #include "threads/system.hh"
 
 #include "filesys/file_system.hh"
 
 #include <stdio.h>
+#include <string.h>
 
+
+/// Función que ejecuta un nuevo programa de usuario (sin argumentos).
+/// Se usa como función de Fork para SC_EXEC.
+static void
+StartProc(void *arg)
+{
+    currentThread->space->InitRegisters();
+    currentThread->space->RestoreState();
+
+    machine->Run();
+}
+
+/// Función que ejecuta un nuevo programa de usuario (con argumentos).
+/// Se usa como función de Fork para SC_EXEC2.
+static void
+StartProcWithArgs(void *args)
+{
+    currentThread->space->InitRegisters();
+    currentThread->space->RestoreState();
+
+    // Escribir los argumentos en la pila del nuevo proceso
+    unsigned argc = WriteArgs((char **)args);
+
+    // Configurar a0 = argc, a1 = argv (apunta al inicio del arreglo argv)
+    // Después de WriteArgs, sp apunta al primer puntero de argv
+    int sp = machine->ReadRegister(STACK_REG);
+    machine->WriteRegister(4, (int)argc);   // a0 = argc
+    machine->WriteRegister(5, sp);          // a1 = argv
+
+    // Reservar espacio para la función call argument area (16 bytes, MIPS ABI)
+    machine->WriteRegister(STACK_REG, sp - 16);
+
+    machine->Run();
+    ASSERT(false);
+}
 
 
 static void
@@ -364,6 +401,150 @@ SyscallHandler(ExceptionType _et)
                 delete[] buf;
                 break;
             }
+        }
+
+        case SC_EXIT: {
+            int status = machine->ReadRegister(4);
+            DEBUG('e', "Thread `%s` exiting with status %d.\n",
+                  currentThread->GetName(), status);
+
+            currentThread->Finish();
+            break;
+        }
+
+        case SC_EXEC: {
+            // Leer la dirección del nombre del ejecutable
+            int filenameAddr = machine->ReadRegister(4);
+            if (filenameAddr == 0) {
+                DEBUG('e', "Error: address to filename string is null.\n");
+                machine->WriteRegister(2, -1);
+                break;
+            }
+
+            char filename[FILE_NAME_MAX_LEN + 1];
+            if (!ReadStringFromUser(filenameAddr,
+                                    filename, sizeof filename)) {
+                DEBUG('e', "Error: filename string too long.\n");
+                machine->WriteRegister(2, -1);
+                break;
+            }
+
+            DEBUG('e', "`Exec` requested for file `%s`.\n", filename);
+
+            // Abrir el ejecutable
+            OpenFile *executable = fileSystem->Open(filename);
+            if (executable == nullptr) {
+                DEBUG('e', "Error: unable to open file `%s`.\n", filename);
+                machine->WriteRegister(2, -1);
+                break;
+            }
+
+            // Crear nuevo hilo (joinable) y espacio de direcciones
+            Thread *newThread = new Thread(filename, true);
+            AddressSpace *space = new AddressSpace(executable);
+            newThread->space = space;
+
+            delete executable;
+
+            // Registrar en la tabla de procesos
+            int spaceId = processTable->Add(newThread);
+            if (spaceId == -1) {
+                DEBUG('e', "Error: process table full.\n");
+                delete space;
+                delete newThread;
+                machine->WriteRegister(2, -1);
+                break;
+            }
+
+            // Fork del hilo
+            newThread->Fork(StartProc, nullptr);
+
+            // Devolver el SpaceId
+            machine->WriteRegister(2, spaceId);
+            break;
+        }
+
+        case SC_JOIN: {
+            int spaceId = machine->ReadRegister(4);
+            DEBUG('e', "`Join` requested for SpaceId %d.\n", spaceId);
+
+            if (!processTable->HasKey(spaceId)) {
+                DEBUG('e', "Error: invalid SpaceId %d.\n", spaceId);
+                machine->WriteRegister(2, -1);
+                break;
+            }
+
+            Thread *childThread = processTable->Get(spaceId);
+            childThread->Join();
+            processTable->Remove(spaceId);
+
+            // Devolver 0 (en un Nachos más completo se devolvería el exit status)
+            machine->WriteRegister(2, 0);
+            break;
+        }
+
+        case SC_EXEC2: {
+            // r4 = nombre del ejecutable, r5 = argv
+            int filenameAddr = machine->ReadRegister(4);
+            int argvAddr     = machine->ReadRegister(5);
+
+            if (filenameAddr == 0) {
+                DEBUG('e', "Error: address to filename string is null.\n");
+                machine->WriteRegister(2, -1);
+                break;
+            }
+
+            char filename[FILE_NAME_MAX_LEN + 1];
+            if (!ReadStringFromUser(filenameAddr,
+                                    filename, sizeof filename)) {
+                DEBUG('e', "Error: filename string too long.\n");
+                machine->WriteRegister(2, -1);
+                break;
+            }
+
+            DEBUG('e', "`Exec2` requested for file `%s`.\n", filename);
+
+            // Guardar los argumentos del proceso padre ANTES de cambiar de espacio
+            char **args = nullptr;
+            if (argvAddr != 0) {
+                args = SaveArgs(argvAddr);
+            }
+
+            // Abrir el ejecutable
+            OpenFile *executable = fileSystem->Open(filename);
+            if (executable == nullptr) {
+                DEBUG('e', "Error: unable to open file `%s`.\n", filename);
+                machine->WriteRegister(2, -1);
+                break;
+            }
+
+            // Crear nuevo hilo (joinable) y espacio de direcciones
+            Thread *newThread = new Thread(filename, true);
+            AddressSpace *space = new AddressSpace(executable);
+            newThread->space = space;
+
+            delete executable;
+
+            // Registrar en la tabla de procesos
+            int spaceId = processTable->Add(newThread);
+            if (spaceId == -1) {
+                DEBUG('e', "Error: process table full.\n");
+                delete space;
+                delete newThread;
+                machine->WriteRegister(2, -1);
+                break;
+            }
+
+            // Fork: si hay argumentos, usar StartProcWithArgs
+            if (args != nullptr) {
+                newThread->Fork(StartProcWithArgs, (void *)args);
+            } else {
+                newThread->Fork(StartProc, nullptr);
+            }
+
+            // Devolver el SpaceId
+            machine->WriteRegister(2, spaceId);
+            break;
         }
 
         default:
