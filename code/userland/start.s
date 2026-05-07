@@ -133,6 +133,14 @@ Close:
         j       $31
         .end    Close
 
+        .globl  Exec2
+        .ent    Exec2
+Exec2:
+        addiu   $2, $0, SC_EXEC2
+        syscall
+        j       $31
+        .end    Exec2
+
 /// Dummy function to keep gcc happy.
         .globl  __main
         .ent    __main

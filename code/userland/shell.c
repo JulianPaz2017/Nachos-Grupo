@@ -112,20 +112,36 @@ main(void)
             continue;
         }
 
-        if (PrepareArguments(line, argv, MAX_ARG_COUNT) == 0) {
+        // Detectar ejecución en segundo plano: si la línea empieza con '&'
+        int background = 0;
+        char *cmdLine = line;
+        if (cmdLine[0] == '&') {
+            background = 1;
+            cmdLine++;  // Avanzar pasando el '&'
+            // Saltar espacios después de '&'
+            while (*cmdLine == ' ') {
+                cmdLine++;
+            }
+        }
+
+        if (PrepareArguments(cmdLine, argv, MAX_ARG_COUNT) == 0) {
             WriteError("too many arguments.", OUTPUT);
             continue;
         }
 
         // Comment and uncomment according to whether command line arguments
         // are given in the system call or not.
-        const SpaceId newProc = Exec(line);
-        //const SpaceId newProc = Exec(line, argv);
+        //const SpaceId newProc = Exec(cmdLine);
+        const SpaceId newProc = Exec2(cmdLine, argv);
 
-        // TODO: check for errors when calling `Exec`; this depends on how
-        //       errors are reported.
+        if (newProc < 0) {
+            WriteError("could not execute command.", OUTPUT);
+            continue;
+        }
 
-        Join(newProc);
+        // Solo hacer Join si no es en segundo plano
+        if (!background) {
+            Join(newProc);
         // TODO: is it necessary to check for errors after `Join` too, or
         //       can you be sure that, with the implementation of the system
         //       call handler you made, it will never give an error?; what

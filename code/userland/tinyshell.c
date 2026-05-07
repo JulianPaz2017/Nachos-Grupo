@@ -21,8 +21,19 @@ main(void)
         buffer[--i] = '\0';
 
         if (i > 0) {
-            newProc = Exec(buffer);
-            Join(newProc);
+            // Detectar ejecución en segundo plano
+            int background = 0;
+            char *cmd = buffer;
+            if (cmd[0] == '&') {
+                background = 1;
+                cmd++;
+                while (*cmd == ' ') cmd++;
+            }
+
+            newProc = Exec(cmd);
+            if (!background) {
+                Join(newProc);
+            }
         }
     }
 

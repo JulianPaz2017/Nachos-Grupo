@@ -35,7 +35,11 @@ extern Timer *timer;                 ///< The hardware alarm clock.
 
 #ifdef USER_PROGRAM
 #include "machine/machine.hh"
+#include "lib/bitmap.hh"
+#include "lib/table.hh"
 extern Machine *machine;  // User program memory and registers.
+extern Bitmap *usedPages;              ///< Bitmap de marcos físicos usados.
+extern Table<Thread *> *processTable;  ///< Tabla de procesos en ejecución.
 #endif
 
 #ifdef FILESYS_NEEDED  // *FILESYS* or *FILESYS_STUB*.
