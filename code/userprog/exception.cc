@@ -193,6 +193,7 @@ SyscallHandler(ExceptionType _et)
             if (openFile == nullptr) {
                 DEBUG('e', "Error: fileID `%d` is not related to an opened file.\n", fileID);
                 machine->WriteRegister(2, -1);
+                break;
             }
 
             // Cerramos el openFile
@@ -235,13 +236,13 @@ SyscallHandler(ExceptionType _et)
             //if (openFile != nullptr) delete openFile;
 
             // Eliminamos el archivo
-            if (fileSystem->Remove(filename)) {
+            if (!fileSystem->Remove(filename)) {
                 DEBUG('e', "Error: fileSystem->Remove fails for file `%s`.\n", filename);
                 machine->WriteRegister(2, -1);
                 break;
             }
 
-            // En caso contrario devolvemos 0 al usuarip
+            // En caso contrario devolvemos 0 al usuario
             machine->WriteRegister(2,0);
             
             break;
@@ -260,30 +261,109 @@ SyscallHandler(ExceptionType _et)
                 break;
             }
 
-            if (fileID == CONSOLE_INPUT) {
-                
+            DEBUG('e', "`Read` requested for file `%u`.\n", fileID); 
+
+            // Si se desea leer de la salida estánda, devolvemos error
+            if (fileID == CONSOLE_OUTPUT) {
+                DEBUG('e', "Error: sc_read from stdout.\n");
+                machine->WriteRegister(2, -1);
+                break;
+            }
+            else {
+                char *buf = new char[sizeBuffer];
+                int bytesReaded = 0;
+
+                // Si se desea leer de la entrada estándar, leemos de la consola
+                if (fileID == CONSOLE_INPUT) {
+                    // Leemos de a un caracter hasta encontrar un '\n' o EOF o bien hasta
+                    // leer 'sizeBuffer' caracteres
+                    for(char c = synchConsole->GetChar(); c != '\n' && c != EOF && 
+                        bytesReaded < sizeBuffer; bytesReaded++, c=synchConsole->GetChar()) {
+                        buf[bytesReaded] = c;                                  
+                    }
+                }
+                // En el caso contrario, leemos desde el archivo indicado
+                else {
+                    // Buscamos el fileID dentro de la tabla de fd del thread actual
+                    OpenFile *openFile = currentThread->GetOpenFile(fileID);
+                                    
+                    // Si es nullptr devolvemos error al usuario
+                    if (openFile == nullptr) {
+                        DEBUG('e', "Error: fileID `%d` is not related to an opened file.\n", fileID);
+                        machine->WriteRegister(2, -1);
+                    }
+
+                    // En caso contrario, leemos desde el archivo
+                    bytesReaded = openFile->Read(buf, sizeBuffer);
+                }
+
+                // Copiar el buffer del kernel al espacio de usuario
+                WriteBufferToUser(buf, bufferAddr, bytesReaded);
+
+                // Retornamos al usuario la cantidad de bytes leídos
+                machine->WriteRegister(2, bytesReaded); 
+
+                delete[] buf;
             }
 
-            char filename[FILE_NAME_MAX_LEN + 1];
+            break;
+        }
+        
+        case SC_WRITE: { // int Write(const char *buffer, int size, OpenFileId id)
+            // Obtenemos los argumentos de la función
+            int bufferAddr = machine->ReadRegister(4);
+            int sizeBuffer = machine->ReadRegister(5);
+            int fileID     = machine->ReadRegister(6);
 
-            // Si el tamaño del nombre del archivo es mayor al tamaño máximo, error
-            if (!ReadStringFromUser(filenameAddr,
-                                    filename, sizeof filename)) {
-                DEBUG('e', "Error: filename string too long (maximum is %u bytes).\n",
-                      FILE_NAME_MAX_LEN);
+            // Si la dirección de memoria del buffer es nullptr, error
+            if (bufferAddr == 0) {
+                DEBUG('e', "Error: address to buffer is null.\n");
                 machine->WriteRegister(2, -1);
                 break;
             }
 
-            
+            DEBUG('e', "`Write` requested for file `%u`.\n", fileID); 
 
-            DEBUG('e', "`Read` requested for file .\n"); 
-            break;
-        }
-        
-        case SC_WRITE: {
-            DEBUG('e', "`Write` requested for file .\n"); 
-            break;
+            // Si se desea leer de la salida estánda, devolvemos error
+            if (fileID == CONSOLE_INPUT) {
+                DEBUG('e', "Error: sc_read from strin.\n");
+                machine->WriteRegister(2, -1);
+                break;
+            }
+            else {
+                char *buf = new char[sizeBuffer];
+                ReadBufferFromUser(bufferAddr, buf, sizeBuffer);
+
+                int bytesWritten = 0;
+
+                // Si se desea escribir en la salida estándar, escribimos en la consola
+                if (fileID == CONSOLE_OUTPUT) {
+                    // Escribimos de a un caracter en la consola
+                    for(int i=0 ; i < sizeBuffer ; i++) synchConsole->PutChar(buf[i]);
+
+                    bytesWritten = sizeBuffer;
+                }
+                // En el caso contrario, escribimos el archivo indicado
+                else {
+                    // Buscamos el fileID dentro de la tabla de fd del thread actual
+                    OpenFile *openFile = currentThread->GetOpenFile(fileID);
+                                    
+                    // Si es nullptr devolvemos error al usuario
+                    if (openFile == nullptr) {
+                        DEBUG('e', "Error: fileID `%d` is not related to an opened file.\n", fileID);
+                        machine->WriteRegister(2, -1);
+                    }
+
+                    // En caso contrario, leemos desde el archivo
+                    bytesWritten = openFile->Write(buf, sizeBuffer);
+                }
+
+                // Retornamos al usuario la cantidad de bytes leídos
+                machine->WriteRegister(2, bytesWritten);         
+
+                delete[] buf;
+                break;
+            }
         }
 
         default:

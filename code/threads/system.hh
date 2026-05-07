@@ -15,7 +15,7 @@
 #include "machine/interrupt.hh"
 #include "machine/statistics.hh"
 #include "machine/timer.hh"
-
+#include "machine/synch_console.hh"
 
 /// Initialization and cleanup routines.
 
@@ -41,6 +41,7 @@ extern Machine *machine;  // User program memory and registers.
 #ifdef FILESYS_NEEDED  // *FILESYS* or *FILESYS_STUB*.
 #include "filesys/file_system.hh"
 extern FileSystem *fileSystem;
+extern SynchConsole *synchConsole;
 #endif
 
 #ifdef FILESYS

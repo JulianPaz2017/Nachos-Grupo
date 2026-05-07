@@ -39,7 +39,7 @@ SynchConsole::~SynchConsole()
 }
 
 void
-Console::CheckCharAvail()
+SynchConsole::CheckCharAvail()
 {
   readersSemaphore->V();
 }
@@ -47,7 +47,7 @@ Console::CheckCharAvail()
 /// Internal routine called when it is time to invoke the interrupt handler
 /// to tell the Nachos kernel that the output character has completed.
 void
-Console::WriteDone()
+SynchConsole::WriteDone()
 {
   writersSemaphore->V(); 
 }
@@ -55,7 +55,7 @@ Console::WriteDone()
 /// Read a character from the input buffer, if there is any there.
 /// Either return the character, or EOF if none buffered.
 char
-Console::GetChar()
+SynchConsole::GetChar()
 {
   readersLock->Acquire();
   char ch = console->GetChar();
@@ -69,7 +69,7 @@ Console::GetChar()
 /// Write a character to the simulated display, schedule an interrupt to
 /// occur in the future, and return.
 void
-Console::PutChar(char ch)
+SynchConsole::PutChar(char ch)
 {
   writersLock->Acquire();
   console->PutChar(ch);

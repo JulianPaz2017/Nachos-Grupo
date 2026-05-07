@@ -31,6 +31,7 @@ Timer *timer;                 ///< The hardware timer device, for invoking
 
 #ifdef FILESYS_NEEDED
 FileSystem *fileSystem;
+SynchConsole *synchConsole;
 #endif
 
 #ifdef FILESYS
@@ -200,6 +201,10 @@ Initialize(int argc, char **argv)
 
 #ifdef FILESYS_NEEDED
     fileSystem = new FileSystem(format);
+    
+    // Inicializamos con nullptr ya que en esos casos, la consola
+    // toma la entrada/salida estándar.
+    synchConsole = new SynchConsole(nullptr, nullptr); 
 #endif
 
 }
@@ -216,6 +221,7 @@ Cleanup()
 
 #ifdef FILESYS_NEEDED
     delete fileSystem;
+    delete synchConsole;
 #endif
 
 #ifdef FILESYS
