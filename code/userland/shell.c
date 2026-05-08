@@ -147,6 +147,7 @@ main(void)
         //       call handler you made, it will never give an error?; what
         //       happens if tomorrow the implementation changes and new
         //       error conditions appear?
+        }
     }
 
     // Never reached.

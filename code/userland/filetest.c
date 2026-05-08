@@ -31,7 +31,5 @@ main(void)
 
     Close(u);
     Remove("test.txt");
-
-
     return 0;
 }

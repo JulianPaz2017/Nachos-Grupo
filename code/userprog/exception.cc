@@ -314,18 +314,14 @@ SyscallHandler(ExceptionType _et)
                 if (fileID == CONSOLE_INPUT) {
                     // Leemos de a un caracter hasta encontrar un '\n' o EOF o bien hasta
                     // leer 'sizeBuffer' caracteres
-                    DEBUG('e', "hole\n");
                     char c;
 
                     do {
                         c = synchConsole->GetChar();
-                        DEBUG('e', "charReaded %c\n", c);
                         buf[bytesReaded] = c;
                         bytesReaded++; 
 
                     } while (c != '\n' && c != EOF && bytesReaded < sizeBuffer);
-                    
-                    DEBUG('e', "ultimo caracter %c\n", c);
                 }
                 // En el caso contrario, leemos desde el archivo indicado
                 else {
@@ -342,14 +338,15 @@ SyscallHandler(ExceptionType _et)
                     bytesReaded = openFile->Read(buf, sizeBuffer);
                 }
 
-                // Copiar el buffer del kernel al espacio de usuario
-                WriteBufferToUser(buf, bufferAddr, bytesReaded);
+                // Copiar el buffer del kernel al espacio de usuario solo si se leyeron bytes
+                if (bytesReaded > 0) {
+                    WriteBufferToUser(buf, bufferAddr, bytesReaded);
+                }
 
                 // Retornamos al usuario la cantidad de bytes leídos
                 machine->WriteRegister(2, bytesReaded); 
 
                 delete[] buf;
-                DEBUG('e', "termine de leer \n");
             }
 
             break;
@@ -377,6 +374,11 @@ SyscallHandler(ExceptionType _et)
                 break;
             }
             else {
+                if (sizeBuffer <= 0) {
+                    machine->WriteRegister(2, 0);
+                    break;
+                }
+
                 char *buf = new char[sizeBuffer];
                 ReadBufferFromUser(bufferAddr, buf, sizeBuffer);
 

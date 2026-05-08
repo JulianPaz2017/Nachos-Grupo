@@ -11,7 +11,7 @@ strlen(const char *s)
 }
 
 void
-puts(const char *s)
+Puts(const char *s)
 {
     if (s == (void *)0) return;
     Write(s, strlen(s), CONSOLE_OUTPUT);

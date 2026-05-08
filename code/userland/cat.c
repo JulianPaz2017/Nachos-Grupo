@@ -7,22 +7,26 @@ int
 main(int argc, char **argv)
 {
     if (argc < 2) {
-        puts("Usage: cat <filename>");
+        Puts("Usage: cat <filename>");
         Exit(-1);
     }
 
     OpenFileId file = Open(argv[1]);
     if (file < 0) {
-        puts("Error: Could not open file.");
+        Puts("Error: Could not open file.");
         Exit(-1);
     }
 
     char buffer[BUFFER_SIZE];
     int bytesRead;
 
-    while ((bytesRead = Read(buffer, BUFFER_SIZE, file)) > 0) {
-        Write(buffer, bytesRead, CONSOLE_OUTPUT);
-    }
+    do {
+        bytesRead = Read(buffer, BUFFER_SIZE, file);
+
+        if (bytesRead > 0) {
+            Write(buffer, bytesRead, CONSOLE_OUTPUT);
+        }
+    }while (bytesRead > 0);
 
     Close(file);
     Exit(0);

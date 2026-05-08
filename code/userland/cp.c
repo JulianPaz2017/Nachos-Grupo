@@ -7,13 +7,13 @@ int
 main(int argc, char **argv)
 {
     if (argc < 3) {
-        puts("Usage: cp <source> <destination>");
+        Puts("Usage: cp <source> <destination>");
         Exit(-1);
     }
 
     OpenFileId src = Open(argv[1]);
     if (src < 0) {
-        puts("Error: Could not open source file.");
+        Puts("Error: Could not open source file.");
         Exit(-1);
     }
 
@@ -22,7 +22,7 @@ main(int argc, char **argv)
 
     OpenFileId dst = Open(argv[2]);
     if (dst < 0) {
-        puts("Error: Could not open destination file.");
+        Puts("Error: Could not open destination file.");
         Close(src);
         Exit(-1);
     }

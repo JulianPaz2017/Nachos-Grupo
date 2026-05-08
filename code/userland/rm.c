@@ -5,12 +5,12 @@ int
 main(int argc, char **argv)
 {
     if (argc < 2) {
-        puts("Usage: rm <filename>");
+        Puts("Usage: rm <filename>");
         Exit(-1);
     }
 
     if (Remove(argv[1]) < 0) {
-        puts("Error: Could not remove file.");
+        Puts("Error: Could not remove file.");
         Exit(-1);
     }
 
