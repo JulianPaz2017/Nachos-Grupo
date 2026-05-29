@@ -27,6 +27,7 @@
 #include "args.hh"
 #include "filesys/directory_entry.hh"
 #include "threads/system.hh"
+#include "address_space.hh"  ///< Para GetPageTable() y GetNumPages() en PageFaultHandler.
 
 #include "filesys/file_system.hh"
 
@@ -100,6 +101,63 @@ DefaultHandler(ExceptionType et)
             ExceptionTypeToString(et), exceptionArg);
     ASSERT(false);
 }
+
+#ifdef USE_TLB
+/// Manejador de PageFaultException (TLB miss handler).
+///
+/// Se invoca cada vez que la MMU no encuentra una traducción válida en la
+/// TLB para la dirección virtual accedida. El kernel debe cargar la entrada
+/// correcta desde la pageTable del proceso hacia la TLB.
+///
+/// Política de reemplazo: índice circular (round-robin).
+///   - Simple y predecible.
+///   - Evita el costo de buscar la entrada menos usada.
+///   - Suficiente para esta implementación educativa.
+///
+/// IMPORTANTE: NO se llama a IncrementPC(). Al retornar, NachOS reintenta
+/// automáticamente la instrucción que disparó el fallo, ahora con la
+/// traducción disponible en la TLB.
+static void
+PageFaultHandler(ExceptionType et)
+{
+    (void) et;  // No necesitamos el tipo de excepción en este handler.
+
+    // Índice de la próxima entrada a reemplazar en la TLB.
+    // 'static' asegura que el valor persiste entre invocaciones del handler.
+    static unsigned tlbIndex = 0;
+
+    // Leer la dirección virtual que causó el TLB miss desde BAD_VADDR_REG.
+    // La MMU escribe allí la dirección fallida antes de lanzar la excepción.
+    unsigned badVAddr = (unsigned) machine->ReadRegister(BAD_VADDR_REG);
+
+    // Calcular el número de página virtual (VPN = dirección / tamaño de página).
+    unsigned vpn = badVAddr / PAGE_SIZE;
+
+    DEBUG('a', "PageFaultHandler: TLB miss en VA 0x%X, VPN=%u -> TLB[%u].\n",
+          badVAddr, vpn, tlbIndex);
+
+    // Obtener la tabla de páginas del proceso en ejecución.
+    const TranslationEntry *pageTable = currentThread->space->GetPageTable();
+    unsigned numPages = currentThread->space->GetNumPages();
+
+    // Sanity check: el VPN debe estar dentro del espacio de direcciones del proceso.
+    // Si no, es un acceso ilegal (ej: puntero colgante, buffer overflow).
+    if (vpn >= numPages) {
+        fprintf(stderr, "PageFaultHandler: VPN %u fuera de rango (numPages=%u).\n",
+                vpn, numPages);
+        ASSERT(false);  // Acceso fuera del espacio de direcciones: error fatal.
+    }
+
+    // Cargar la traducción faltante en la TLB.
+    // Reemplazamos la entrada indicada por el índice circular.
+    machine->GetMMU()->tlb[tlbIndex] = pageTable[vpn];
+
+    // Avanzar el índice (mod TLB_SIZE) para el próximo reemplazo.
+    tlbIndex = (tlbIndex + 1) % TLB_SIZE;
+
+    // No llamamos IncrementPC(): la instrucción se reintenta automáticamente.
+}
+#endif  // USE_TLB
 
 /// Handle a system call exception.
 ///
@@ -575,7 +633,14 @@ SetExceptionHandlers()
 {
     machine->SetHandler(NO_EXCEPTION,            &DefaultHandler);
     machine->SetHandler(SYSCALL_EXCEPTION,       &SyscallHandler);
+#ifdef USE_TLB
+    // Con TLB activa: los fallos de página (TLB misses) los atiende
+    // PageFaultHandler, que carga la traducción desde pageTable a la TLB.
+    machine->SetHandler(PAGE_FAULT_EXCEPTION,    &PageFaultHandler);
+#else
+    // Sin TLB: un fallo de página no debería ocurrir (usamos pageTable directa).
     machine->SetHandler(PAGE_FAULT_EXCEPTION,    &DefaultHandler);
+#endif
     machine->SetHandler(READ_ONLY_EXCEPTION,     &DefaultHandler);
     machine->SetHandler(BUS_ERROR_EXCEPTION,     &DefaultHandler);
     machine->SetHandler(ADDRESS_ERROR_EXCEPTION, &DefaultHandler);

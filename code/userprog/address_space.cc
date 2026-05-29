@@ -133,18 +133,48 @@ AddressSpace::InitRegisters()
 /// On a context switch, save any machine state, specific to this address
 /// space, that needs saving.
 ///
-/// For now, nothing!
+/// Con TLB habilitada: invalidamos todas las entradas de la TLB porque
+/// pertenecen al proceso que se suspende. La TLB es un recurso global de
+/// hardware, y sus traducciones son válidas solo para el espacio de
+/// direcciones actual. Si no las invalidamos, el próximo proceso podría
+/// usar traducciones de otro proceso → corrupción de memoria.
 void
 AddressSpace::SaveState()
-{}
+{
+#ifdef USE_TLB
+    // Obtener la TLB desde la MMU (hardware simulado).
+    TranslationEntry *tlb = machine->GetMMU()->tlb;
+
+    // Marcar cada entrada como inválida.
+    // Costo O(TLB_SIZE) = O(4): barato y necesario.
+    for (unsigned i = 0; i < TLB_SIZE; i++) {
+        tlb[i].valid = false;
+    }
+    DEBUG('a', "TLB invalidada en cambio de contexto (SaveState).\n");
+#endif
+    // Sin TLB: no hay estado adicional que guardar en este punto.
+}
 
 /// On a context switch, restore the machine state so that this address space
 /// can run.
 ///
-/// For now, tell the machine where to find the page table.
+/// Con TLB: la MMU usa la TLB (hardware), no la pageTable directamente.
+/// Las traducciones se cargarán en la TLB bajo demanda mediante el
+/// PageFaultHandler. No hay nada que configurar aquí: la TLB ya fue
+/// invalidada por SaveState del proceso saliente.
+///
+/// Sin TLB: apuntamos la MMU a la tabla de páginas de este proceso para
+/// que pueda traducir direcciones virtuales a físicas directamente.
 void
 AddressSpace::RestoreState()
 {
+#ifdef USE_TLB
+    // Modo TLB: la MMU usa tlb[], no pageTable.
+    // Las entradas se cargan por fallo (PageFaultHandler), no aquí.
+    DEBUG('a', "RestoreState en modo TLB: sin carga de pageTable.\n");
+#else
+    // Modo tabla de páginas lineal: indicarle a la MMU cuál tabla usar.
     machine->GetMMU()->pageTable     = pageTable;
     machine->GetMMU()->pageTableSize = numPages;
+#endif
 }

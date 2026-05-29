@@ -16,6 +16,7 @@
 
 #include "filesys/file_system.hh"
 #include "machine/translation_entry.hh"
+#include "machine/mmu.hh"  ///< Necesario para TLB_SIZE en SaveState.
 
 
 const unsigned USER_STACK_SIZE = 1024;  ///< Increase this as necessary!
@@ -46,6 +47,13 @@ public:
 
     void SaveState();
     void RestoreState();
+
+    /// Retorna un puntero de solo lectura a la tabla de páginas del proceso.
+    /// Usado por el PageFaultHandler para cargar entradas faltantes en la TLB.
+    const TranslationEntry *GetPageTable() const { return pageTable; }
+
+    /// Retorna la cantidad de páginas virtuales de este espacio de direcciones.
+    unsigned GetNumPages() const { return numPages; }
 
 private:
 
