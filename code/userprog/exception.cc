@@ -126,6 +126,11 @@ PageFaultHandler(ExceptionType et)
     // 'static' asegura que el valor persiste entre invocaciones del handler.
     static unsigned tlbIndex = 0;
 
+    // Contabilizar este fallo como un TLB miss en las estadísticas globales.
+    // Cada invocación de este handler corresponde exactamente a un miss.
+    // Los hits se cuentan en mmu.cc::RetrievePageEntry().
+    stats->tlbMisses++;
+
     // Leer la dirección virtual que causó el TLB miss desde BAD_VADDR_REG.
     // La MMU escribe allí la dirección fallida antes de lanzar la excepción.
     unsigned badVAddr = (unsigned) machine->ReadRegister(BAD_VADDR_REG);

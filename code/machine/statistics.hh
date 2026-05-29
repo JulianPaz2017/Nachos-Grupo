@@ -47,6 +47,11 @@ public:
     /// Number of virtual memory page faults.
     unsigned long numPageFaults;
 
+    /// Contadores para calcular el hit ratio de la TLB (solo con USE_TLB).
+    /// hit ratio = tlbHits / (tlbHits + tlbMisses)
+    unsigned long tlbHits;    ///< Traducciones encontradas en la TLB (aciertos).
+    unsigned long tlbMisses;  ///< Traducciones no encontradas en la TLB (fallos).
+
 #ifdef DFS_TICKS_FIX
     /// Number of times the tick count gets reset.
     unsigned long tickResets;

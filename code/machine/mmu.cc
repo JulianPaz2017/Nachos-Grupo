@@ -31,9 +31,11 @@
 #include "mmu.hh"
 #include "machine.hh"
 #include "endianness.hh"
+#include "statistics.hh"  ///< Para contadores de TLB (tlbHits, tlbMisses).
 
 #include <stdio.h>
 extern Machine* machine;
+extern Statistics *stats;  ///< Objeto global de estadísticas (definido en threads/system.cc).
 
 
 MMU::MMU(unsigned aNumPhysPages)
@@ -198,6 +200,7 @@ MMU::RetrievePageEntry(unsigned vpn, TranslationEntry **entry) const
         for (i = 0; i < TLB_SIZE; i++) {
             TranslationEntry *e = &tlb[i];
             if (e->valid && e->virtualPage == vpn) {
+                stats->tlbHits++;  // Acierto: la traducción estaba en la TLB.
                 *entry = e;  // FOUND!
                 return NO_EXCEPTION;
             }
