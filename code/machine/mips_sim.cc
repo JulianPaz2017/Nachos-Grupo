@@ -27,7 +27,7 @@
 void
 Machine::Run()
 {
-    Instruction *instr = new Instruction;
+    Instruction instr;
       // Storage for decoded instruction.
 
     if (debug.IsEnabled('m')) {
@@ -36,8 +36,8 @@ Machine::Run()
     interrupt->SetStatus(USER_MODE);
 
     for (;;) {
-        if (FetchInstruction(instr)) {
-            ExecInstruction(instr);
+        if (FetchInstruction(&instr)) {
+            ExecInstruction(&instr);
         }
         interrupt->OneTick();
         if (singleStepper != nullptr && !singleStepper->Step()) {

@@ -222,6 +222,18 @@ Cleanup()
 #ifdef USER_PROGRAM
     delete machine;
     delete usedPages;
+
+    if (processTable != nullptr){
+        for (int i = 0; i < processTable->SIZE; i++) {
+             if (processTable->HasKey(i)){
+                 Thread* t = processTable->Remove(i);
+                 if (t != currentThread) {
+                    delete t; 
+                 }
+             }
+        }
+    }
+    
     delete processTable;
 #endif
 

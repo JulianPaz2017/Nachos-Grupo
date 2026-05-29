@@ -96,8 +96,21 @@ Thread::~Thread()
         delete joinSem;
     }
 
+    // Cerramos todos los archivos que hayan quedado abiertos
+    for (int i = 0; !openFiles->IsEmpty() && i < openFiles->SIZE; i++) {
+        if (openFiles->HasKey(i)) {
+            OpenFile * openFile = openFiles->Remove(i);
+            delete openFile;
+        }
+    }
+
     // Borramos la tabla de archivos abiertos
     delete openFiles;
+
+#ifdef USER_PROGRAM
+    // User code this thread is running.
+    delete space;
+#endif
 }
 
 /// Invoke `(*func)(arg)`, allowing caller and callee to execute
@@ -242,10 +255,6 @@ Thread::Yield()
     
     Thread *nextThread = scheduler->FindNextToRun();
     if (nextThread != nullptr) {
-        // Degradar ANTES de insertar en la lista
-        unsigned p = this->GetPriority();
-        this->SetPriority((p == 0) ? 0 : (p - 1));
-
         scheduler->ReadyToRun(this);   // ahora entra con la prioridad correcta
         scheduler->Run(nextThread);    // ya no toca la prioridad del oldThread
     }
