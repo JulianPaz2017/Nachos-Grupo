@@ -221,7 +221,6 @@ Cleanup()
 
 #ifdef USER_PROGRAM
     delete machine;
-    delete usedPages;
 
     if (processTable != nullptr){
         for (int i = 0; i < processTable->SIZE; i++) {
@@ -256,6 +255,11 @@ Cleanup()
     Thread *t = currentThread;
     currentThread = NULL;
     delete t; 
+
+#ifdef USER_PROGRAM
+    // La borramos acá ya que la necesitamos para eliminar los hilos
+    delete usedPages;
+#endif 
 
     exit(0);
 }

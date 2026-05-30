@@ -493,8 +493,15 @@ SyscallHandler(ExceptionType _et)
             int status = machine->ReadRegister(4);
             DEBUG('e', "Thread `%s` exiting with status %d.\n",
                   currentThread->GetName(), status);
-
-            currentThread->Finish();
+                  
+            if (processTable->IsEmpty()) {
+                DEBUG('e', "Último proceso terminó. Apagando Nachos.\n");
+                interrupt->Halt();
+            }
+            else {
+                currentThread->Finish();
+            }
+            
             break;
         }
 

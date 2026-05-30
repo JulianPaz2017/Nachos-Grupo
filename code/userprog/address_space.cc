@@ -319,7 +319,6 @@ AddressSpace::SaveState()
     TranslationEntry *tlb = machine->GetMMU()->tlb;
 
     // Marcar cada entrada como inválida.
-    // Costo O(TLB_SIZE) = O(4): barato y necesario.
     for (unsigned i = 0; i < TLB_SIZE; i++) {
         tlb[i].valid = false;
     }
@@ -334,7 +333,7 @@ AddressSpace::SaveState()
 /// Con TLB: la MMU usa la TLB (hardware), no la pageTable directamente.
 /// Las traducciones se cargarán en la TLB bajo demanda mediante el
 /// PageFaultHandler. No hay nada que configurar aquí: la TLB ya fue
-/// invalidada por SaveState del proceso saliente.
+/// invalidada por SaveState.
 ///
 /// Sin TLB: apuntamos la MMU a la tabla de páginas de este proceso para
 /// que pueda traducir direcciones virtuales a físicas directamente.
@@ -343,7 +342,7 @@ AddressSpace::RestoreState()
 {
 #ifdef USE_TLB
     // Modo TLB: la MMU usa tlb[], no pageTable.
-    // Las entradas se cargan por fallo (PageFaultHandler), no aquí.
+    // Las entradas se cargan por fallo (PageFaultHandler).
     DEBUG('a', "RestoreState en modo TLB: sin carga de pageTable.\n");
 #else
     // Modo tabla de páginas lineal: indicarle a la MMU cuál tabla usar.

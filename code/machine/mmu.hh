@@ -25,7 +25,10 @@ const unsigned DEFAULT_NUM_PHYS_PAGES = 32;
 /// Number of entries in the TLB, if one is present.
 ///
 /// If there is a TLB, it will be small compared to page tables.
-const unsigned TLB_SIZE = 4;
+/// Observamos que al ejecutar los programas de matmult y sort, el mayor 
+/// hit-ratio se obtuvo con TLB_SIZE=64 aunque con TLB_SIZE=32 se vieron 
+/// resultados similares
+const unsigned TLB_SIZE = 64;
 
 
 /// This class simulates an MMU (memory management unit) that can use either
