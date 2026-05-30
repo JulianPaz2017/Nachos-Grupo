@@ -153,7 +153,19 @@ PageFaultHandler(ExceptionType et)
         ASSERT(false);  // Acceso fuera del espacio de direcciones: error fatal.
     }
 
-    // Cargar la traducción faltante en la TLB.
+#ifdef DEMAND_LOADING
+    // Si la entrada NO es válida, la página todavía no fue cargada en memoria
+    // (genuine page fault).  Invocar LoadPage() para asignar un marco físico
+    // y volcarle el contenido del segmento correspondiente del ejecutable.
+    if (!pageTable[vpn].valid) {
+        DEBUG('a', "PageFaultHandler: VPN=%u no cargada, invocando LoadPage.\n", vpn);
+        currentThread->space->LoadPage(vpn);
+        // pageTable sigue apuntando al mismo arreglo interno del AddressSpace;
+        // ahora pageTable[vpn].valid == true y physicalPage está asignado.
+    }
+#endif
+
+    // Cargar la traducción (ahora válida) en la TLB.
     // Reemplazamos la entrada indicada por el índice circular.
     machine->GetMMU()->tlb[tlbIndex] = pageTable[vpn];
 
@@ -518,7 +530,13 @@ SyscallHandler(ExceptionType _et)
             AddressSpace *space = new AddressSpace(executable);
             newThread->space = space;
 
+#ifndef DEMAND_LOADING
+            // Sin carga por demanda: el AddressSpace ya copió todo al
+            // construirse; podemos cerrar el archivo.
             delete executable;
+#endif
+            // Con DEMAND_LOADING: el AddressSpace guarda el puntero y
+            // lo cerrará en su destructor cuando el proceso termine.
 
             // Registrar en la tabla de procesos
             int spaceId = processTable->Add(newThread);
@@ -597,7 +615,13 @@ SyscallHandler(ExceptionType _et)
             AddressSpace *space = new AddressSpace(executable);
             newThread->space = space;
 
+#ifndef DEMAND_LOADING
+            // Sin carga por demanda: el AddressSpace ya copió todo al
+            // construirse; podemos cerrar el archivo.
             delete executable;
+#endif
+            // Con DEMAND_LOADING: el AddressSpace guarda el puntero y
+            // lo cerrará en su destructor cuando el proceso termine.
 
             // Registrar en la tabla de procesos
             int spaceId = processTable->Add(newThread);

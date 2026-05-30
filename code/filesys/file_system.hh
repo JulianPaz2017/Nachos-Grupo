@@ -82,6 +82,7 @@ public:
         return new OpenFile(fileDescriptor);
     }
 
+    
     bool Remove(const char *name)
     {
         ASSERT(name != nullptr);

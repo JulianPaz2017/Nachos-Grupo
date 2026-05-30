@@ -17,6 +17,7 @@
 #include "filesys/file_system.hh"
 #include "machine/translation_entry.hh"
 #include "machine/mmu.hh"  ///< Necesario para TLB_SIZE en SaveState.
+#include "executable.hh"
 
 
 const unsigned USER_STACK_SIZE = 1024;  ///< Increase this as necessary!
@@ -62,6 +63,31 @@ private:
 
     /// Number of pages in the virtual address space.
     unsigned numPages;
+
+#ifdef DEMAND_LOADING
+    /// El ejecutable se mantiene abierto para carga por demanda.
+    OpenFile *executableFile;
+
+    /// Tipo de segmento que respalda cada página virtual.
+    /// Usado por LoadPage() para saber qué leer del archivo.
+    enum PageSegment {
+        SEG_CODE,       ///< Segmento de código (read-only).
+        SEG_INIT_DATA,  ///< Segmento de datos inicializados.
+        SEG_UNINIT,     ///< Datos no inicializados (solo ceros).
+        SEG_STACK       ///< Pila (solo ceros, sin respaldo en archivo).
+    };
+
+    PageSegment *pageSegments; ///< Tipo de segmento por página.
+    uint32_t    *pageOffsets;  ///< Offset dentro del segmento para esta página.
+
+public:
+    /// Carga bajo demanda la página virtual `vpn` en un marco físico libre.
+    /// Llamado desde el PageFaultHandler cuando la entrada de la pageTable
+    /// tiene valid=false.
+    void LoadPage(unsigned vpn);
+
+private:
+#endif
 
 };
 
