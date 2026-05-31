@@ -53,6 +53,11 @@ AddressSpace::AddressSpace(OpenFile *executable_file)
 
     char *mainMemory = machine->mainMemory;
 
+#ifdef DEMAND_LOADING
+    // Nos guardamos el ejecutable
+    executable = executable_file;
+    return;
+#else
     // Then, copy in the code and data segments into memory.
     uint32_t codeSize = exe.GetCodeSize();
     uint32_t initDataSize = exe.GetInitDataSize();
@@ -82,6 +87,7 @@ AddressSpace::AddressSpace(OpenFile *executable_file)
             mainMemory[physAddr] = byte;
         }
     }
+#endif
 }
 
 /// Deallocate an address space.
@@ -92,8 +98,17 @@ AddressSpace::~AddressSpace()
         usedPages->Clear(pageTable[i].physicalPage);
     }
     delete [] pageTable;
+
+#ifdef DEMAND_LOADING
+    delete executable;
+#endif
 }
 
+void
+AddressSpace::LoadPage(unsigned vpn){
+    
+  return;  
+}
 
 /// Set the initial values for the user-level register set.
 ///

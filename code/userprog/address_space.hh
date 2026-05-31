@@ -63,6 +63,14 @@ private:
     /// Number of pages in the virtual address space.
     unsigned numPages;
 
+#ifdef DEMAND_LOADING
+public:
+    void LoadPage(unsigned vpn);
+
+private:
+    // Almacenamos el ejecutable por si tenemos que cargar más información del mismo
+    OpenFile *executable;
+#endif
 
 };
 

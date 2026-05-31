@@ -109,11 +109,6 @@ DefaultHandler(ExceptionType et)
 /// TLB para la dirección virtual accedida. El kernel debe cargar la entrada
 /// correcta desde la pageTable del proceso hacia la TLB.
 ///
-/// Política de reemplazo: índice circular (round-robin).
-///   - Simple y predecible.
-///   - Evita el costo de buscar la entrada menos usada.
-///   - Suficiente para esta implementación educativa.
-///
 /// IMPORTANTE: NO se llama a IncrementPC(). Al retornar, NachOS reintenta
 /// automáticamente la instrucción que disparó el fallo, ahora con la
 /// traducción disponible en la TLB.
@@ -153,6 +148,12 @@ PageFaultHandler(ExceptionType et)
         ASSERT(false);  // Acceso fuera del espacio de direcciones: error fatal.
     }
 
+#ifdef DEMAND_LOADING
+    if (!pageTable[vpn].valid) {
+        currentThread->space->LoadPage(vpn);
+    }
+#endif 
+
     // Reemplazamos la entrada indicada por el índice circular.
     machine->GetMMU()->tlb[tlbIndex] = pageTable[vpn];
 
@@ -162,6 +163,9 @@ PageFaultHandler(ExceptionType et)
     // No llamamos IncrementPC(): la instrucción se reintenta automáticamente.
 }
 #endif  // USE_TLB
+
+
+
 
 /// Handle a system call exception.
 ///
@@ -524,7 +528,11 @@ SyscallHandler(ExceptionType _et)
             AddressSpace *space = new AddressSpace(executable);
             newThread->space = space;
 
+#ifndef DEMAND_LOADING
+            // Si no estamos usando demand loading, eliminamos el ejecutable
+            // ya que toda su información se cargó en el espacio de direcciones
             delete executable;
+#endif
 
             // Registrar en la tabla de procesos
             int spaceId = processTable->Add(newThread);
@@ -603,7 +611,12 @@ SyscallHandler(ExceptionType _et)
             AddressSpace *space = new AddressSpace(executable);
             newThread->space = space;
 
+
+#ifndef DEMAND_LOADING
+            // Si no estamos usando demand loading, eliminamos el ejecutable
+            // ya que toda su información se cargó en el espacio de direcciones
             delete executable;
+#endif
 
             // Registrar en la tabla de procesos
             int spaceId = processTable->Add(newThread);
