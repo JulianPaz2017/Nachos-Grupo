@@ -137,7 +137,7 @@ PageFaultHandler(ExceptionType et)
           badVAddr, vpn, tlbIndex);
 
     // Obtener la tabla de páginas del proceso en ejecución.
-    const TranslationEntry *pageTable = currentThread->space->GetPageTable();
+    TranslationEntry *pageTable = currentThread->space->GetPageTable();
     unsigned numPages = currentThread->space->GetNumPages();
 
     // Sanity check: el VPN debe estar dentro del espacio de direcciones del proceso.

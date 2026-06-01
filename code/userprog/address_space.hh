@@ -50,6 +50,7 @@ public:
 
     /// Retorna un puntero de solo lectura a la tabla de páginas del proceso.
     /// Usado por el PageFaultHandler para cargar entradas faltantes en la TLB.
+    TranslationEntry *GetPageTable() { return pageTable; }
     const TranslationEntry *GetPageTable() const { return pageTable; }
 
     /// Retorna la cantidad de páginas virtuales de este espacio de direcciones.

@@ -12,6 +12,8 @@
 
 #include <string.h>
 
+#include <algorithm>
+
 
 /// First, set up the translation from program memory to physical memory.
 
@@ -31,7 +33,21 @@ AddressSpace::AddressSpace(OpenFile *executable_file)
     numPages = DivRoundUp(size, PAGE_SIZE);
     size = numPages * PAGE_SIZE;
 
-    // Verificar que hay suficientes marcos libres
+#ifdef DEMAND_LOADING
+
+    pageTable = new TranslationEntry[numPages];
+    for (unsigned i = 0; i < numPages; i++) {
+        pageTable[i].virtualPage  = i;
+        pageTable[i].physicalPage = -1;
+        pageTable[i].valid        = false; 
+        pageTable[i].use          = false;
+        pageTable[i].dirty        = false;
+        pageTable[i].readOnly     = false;
+    }
+
+    executable = executable_file;
+#else
+    // Verificar que hay suficientes marcos libres (solo sin carga por demanda)
     ASSERT(numPages <= usedPages->CountClear());
 
     // First, set up the translation: asignamos marcos físicos usando el bitmap.
@@ -53,11 +69,6 @@ AddressSpace::AddressSpace(OpenFile *executable_file)
 
     char *mainMemory = machine->mainMemory;
 
-#ifdef DEMAND_LOADING
-    // Nos guardamos el ejecutable
-    executable = executable_file;
-    return;
-#else
     // Then, copy in the code and data segments into memory.
     uint32_t codeSize = exe.GetCodeSize();
     uint32_t initDataSize = exe.GetInitDataSize();
@@ -104,11 +115,61 @@ AddressSpace::~AddressSpace()
 #endif
 }
 
+#ifdef DEMAND_LOADING
 void
-AddressSpace::LoadPage(unsigned vpn){
-    
-  return;  
+AddressSpace::LoadPage(unsigned vpn)
+{
+    ASSERT(vpn < numPages);
+    ASSERT(!pageTable[vpn].valid);
+
+    // 1. Asignar un marco físico libre
+    int physPage = usedPages->Find();
+    ASSERT(physPage != -1); // Asegurar que hay memoria física libre disponible
+
+    pageTable[vpn].physicalPage = physPage;
+    pageTable[vpn].valid        = true;
+    pageTable[vpn].use          = false;
+    pageTable[vpn].dirty        = false;
+    pageTable[vpn].readOnly     = false;
+
+    // 2. Limpiar el marco físico asignado (inicializar a cero)
+    char *physAddr = &machine->mainMemory[physPage * PAGE_SIZE];
+    memset(physAddr, 0, PAGE_SIZE);
+
+    // 3. Cargar datos desde el ejecutable si la página virtual intersecta con el código o datos inicializados
+    Executable exe(executable);
+    uint32_t pageStartVA = vpn * PAGE_SIZE; // inicio de la página virtual
+
+    // Intersección con el Segmento de Código
+    uint32_t codeStart = exe.GetCodeAddr();
+    uint32_t codeSize  = exe.GetCodeSize();
+    uint32_t codeIntersectStart = std::max(pageStartVA, codeStart);
+    uint32_t codeIntersectEnd   = std::min(pageStartVA + PAGE_SIZE, codeStart + codeSize);
+
+    if (codeIntersectStart < codeIntersectEnd) {
+        uint32_t offsetInSegment = codeIntersectStart - codeStart;
+        uint32_t sizeToRead      = codeIntersectEnd - codeIntersectStart;
+        uint32_t destOffset      = codeIntersectStart - pageStartVA;
+        exe.ReadCodeBlock(physAddr + destOffset, sizeToRead, offsetInSegment);
+    }
+
+    // Intersección con el Segmento de Datos Inicializados
+    uint32_t initDataStart = exe.GetInitDataAddr();
+    uint32_t initDataSize  = exe.GetInitDataSize();
+    uint32_t dataIntersectStart = std::max(pageStartVA, initDataStart);
+    uint32_t dataIntersectEnd   = std::min(pageStartVA + PAGE_SIZE, initDataStart + initDataSize);
+
+    if (dataIntersectStart < dataIntersectEnd) {
+        uint32_t offsetInSegment = dataIntersectStart - initDataStart;
+        uint32_t sizeToRead      = dataIntersectEnd - dataIntersectStart;
+        uint32_t destOffset      = dataIntersectStart - pageStartVA;
+        exe.ReadDataBlock(physAddr + destOffset, sizeToRead, offsetInSegment);
+    }
+
+    DEBUG('a', "DEMAND LOADING: Página virtual %u cargada exitosamente en el marco físico %d.\n",
+          vpn, physPage);
 }
+#endif
 
 /// Set the initial values for the user-level register set.
 ///
@@ -153,13 +214,21 @@ AddressSpace::SaveState()
     // Obtener la TLB desde la MMU (hardware simulado).
     TranslationEntry *tlb = machine->GetMMU()->tlb;
 
-    // Marcar cada entrada como inválida.
+    // Marcar cada entrada como inválida y guardar los bits dirty y use en la tabla de páginas.
     for (unsigned i = 0; i < TLB_SIZE; i++) {
-        tlb[i].valid = false;
-    }
+        if (tlb[i].valid) {
+            tlb[i].valid = false;
+            #ifdef SWAP
+            unsigned vpn = tlb[i].virtualPage;
+            pageTable[vpn].dirty = tlb[i].dirty;
+            pageTable[vpn].use   = tlb[i].use;
+            #endif
+        }
     DEBUG('a', "TLB invalidada en cambio de contexto (SaveState).\n");
+    }
 #endif
     // Sin TLB: no hay estado adicional que guardar en este punto.
+
 }
 
 /// On a context switch, restore the machine state so that this address space
