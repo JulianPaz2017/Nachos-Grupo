@@ -149,6 +149,9 @@ PageFaultHandler(ExceptionType et)
     }
 
 #ifdef DEMAND_LOADING
+    // Aumentamos la cantidad de fallos de página
+    stats->numPageFaults++;
+
     if (!pageTable[vpn].valid) {
         currentThread->space->LoadPage(vpn);
     }
@@ -159,8 +162,6 @@ PageFaultHandler(ExceptionType et)
 
     // Avanzar el índice (mod TLB_SIZE) para el próximo reemplazo.
     tlbIndex = (tlbIndex + 1) % TLB_SIZE;
-
-    // No llamamos IncrementPC(): la instrucción se reintenta automáticamente.
 }
 #endif  // USE_TLB
 

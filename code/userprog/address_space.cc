@@ -105,10 +105,14 @@ AddressSpace::AddressSpace(OpenFile *executable_file)
 /// Liberamos los marcos físicos en el bitmap global.
 AddressSpace::~AddressSpace()
 {
-    for (unsigned i = 0; i < numPages; i++) {
-        usedPages->Clear(pageTable[i].physicalPage);
+    if (pageTable != nullptr) {
+        for (unsigned i = 0; i < numPages; i++) {
+            if (pageTable[i].valid) { 
+                usedPages->Clear(pageTable[i].physicalPage);
+            }
+        }
+        delete [] pageTable;
     }
-    delete [] pageTable;
 
 #ifdef DEMAND_LOADING
     delete executable;
