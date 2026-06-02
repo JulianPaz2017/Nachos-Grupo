@@ -11,6 +11,7 @@
 #ifdef USER_PROGRAM
 #include "userprog/debugger.hh"
 #include "userprog/exception.hh"
+#include "lib/coremap.hh"
 #endif
 
 #include <stdlib.h>
@@ -40,7 +41,13 @@ SynchDisk *synchDisk;
 
 #ifdef USER_PROGRAM  // Requires either *FILESYS* or *FILESYS_STUB*.
 Machine *machine;  ///< User program memory and registers.
-Bitmap *usedPages = nullptr;              ///< Bitmap de marcos físicos usados.
+
+#ifndef SWAP
+    Bitmap *usedPages = nullptr;              ///< Bitmap de marcos físicos usados.
+#else
+    Coremap *coremap = nullptr;
+#endif
+
 Table<Thread *> *processTable = nullptr;  ///< Tabla de procesos en ejecución.
 #endif
 
@@ -195,7 +202,14 @@ Initialize(int argc, char **argv)
     
     machine = new Machine(d, numPhysicalPages);  // This must come first.
     SetExceptionHandlers();
+
+#ifndef SWAP
     usedPages = new Bitmap(machine->GetNumPhysicalPages());
+#else
+    coremap = new Bitmap(machine->GetNumPhysicalPages());
+#endif
+
+    // Tabla de procesos
     processTable = new Table<Thread *>;
 #endif
 
