@@ -31,7 +31,11 @@ StartProcess(const char *filename)
         return;
     }
 
-    AddressSpace *space = new AddressSpace(executable);
+    // Registramos el hilo actual
+    int pid = processTable->Add(currentThread);
+
+    currentThread->SetPid(pid);
+    AddressSpace *space = new AddressSpace(executable, currentThread->GetPid());
     currentThread->space = space;
 
 #ifndef DEMAND_LOADING

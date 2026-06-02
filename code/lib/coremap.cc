@@ -8,7 +8,7 @@ Coremap::Coremap(unsigned nitems){
   sizeCoremap = nitems;
 
   // Creamos el coremap
-  coremap = new CoremapEntry [numWords];
+  coremap = new CoremapEntry [nitems];
 }
 
 Coremap::~Coremap() {
@@ -19,25 +19,25 @@ Coremap::~Coremap() {
 void 
 Coremap::Mark(unsigned pfn, int vpn, int pid) {
   ASSERT(pfn < sizeCoremap);
-  coremap[pfn]->Set(vpn, pid);
+  coremap[pfn].Set(vpn, pid);
 }
 
 void 
 Coremap::Clear(unsigned pfn) {
   ASSERT(pfn < sizeCoremap);
-  coremap[pfn]->Clear();
+  coremap[pfn].Clear();
 }
 
 bool 
 Coremap::Used(unsigned pfn) const {
   ASSERT(pfn < sizeCoremap);
-  return coremap[pfn]->IsInUse(); 
+  return coremap[pfn].IsInUse(); 
 }
 
 int
 Coremap::Find() {
   for (int i = 0; i < sizeCoremap; i++) {
-    if (!(coremap[i]->IsInUse())) return i;
+    if (!(coremap[i].IsInUse())) return i;
   }
 
   return -1;
@@ -48,7 +48,7 @@ Coremap::CountClear() const {
   int clearPages = 0;
 
   for (int i = 0; i < sizeCoremap; i++) {
-    if (!(coremap[i]->IsInUse())) clearPages++;
+    if (!(coremap[i].IsInUse())) clearPages++;
   }
 
   return clearPages;
@@ -58,6 +58,6 @@ void
 Coremap::Print() const {
   for (int i = 0; i < sizeCoremap; i++) {
     printf("Marco %2u: ", i);
-    coremap[i]->Print();
+    coremap[i].Print();
   }
 }

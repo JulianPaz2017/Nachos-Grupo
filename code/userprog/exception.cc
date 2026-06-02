@@ -486,6 +486,9 @@ SyscallHandler(ExceptionType _et)
             DEBUG('e', "Thread `%s` exiting with status %d.\n",
                   currentThread->GetName(), status);
                   
+            /// Eliminamos el proceso de la tabla de procesos
+            processTable->Remove(currentThread->GetPid());
+
             if (processTable->IsEmpty()) {
                 DEBUG('e', "Último proceso terminó. Apagando Nachos.\n");
                 interrupt->Halt();
@@ -526,7 +529,19 @@ SyscallHandler(ExceptionType _et)
 
             // Crear nuevo hilo (joinable) y espacio de direcciones
             Thread *newThread = new Thread(filename, true);
-            AddressSpace *space = new AddressSpace(executable);
+
+            // Registrar en la tabla de procesos
+            int spaceId = processTable->Add(newThread);
+            if (spaceId == -1) {
+                DEBUG('e', "Error: process table full.\n");
+                processTable->Remove(spaceId);
+                delete newThread;
+                machine->WriteRegister(2, -1);
+                break;
+            }
+
+            newThread->SetPid(spaceId);
+            AddressSpace *space = new AddressSpace(executable, spaceId);
             newThread->space = space;
 
 #ifndef DEMAND_LOADING
@@ -534,16 +549,6 @@ SyscallHandler(ExceptionType _et)
             // ya que toda su información se cargó en el espacio de direcciones
             delete executable;
 #endif
-
-            // Registrar en la tabla de procesos
-            int spaceId = processTable->Add(newThread);
-            if (spaceId == -1) {
-                DEBUG('e', "Error: process table full.\n");
-                delete space;
-                delete newThread;
-                machine->WriteRegister(2, -1);
-                break;
-            }
 
             // Fork del hilo
             newThread->Fork(StartProc, nullptr);
@@ -609,7 +614,19 @@ SyscallHandler(ExceptionType _et)
 
             // Crear nuevo hilo (joinable) y espacio de direcciones
             Thread *newThread = new Thread(filename, true);
-            AddressSpace *space = new AddressSpace(executable);
+
+            // Registrar en la tabla de procesos
+            int spaceId = processTable->Add(newThread);
+            if (spaceId == -1) {
+                DEBUG('e', "Error: process table full.\n");
+                processTable->Remove(spaceId);
+                delete newThread;
+                machine->WriteRegister(2, -1);
+                break;
+            }
+
+            newThread->SetPid(spaceId);
+            AddressSpace *space = new AddressSpace(executable, spaceId);
             newThread->space = space;
 
 
@@ -619,15 +636,7 @@ SyscallHandler(ExceptionType _et)
             delete executable;
 #endif
 
-            // Registrar en la tabla de procesos
-            int spaceId = processTable->Add(newThread);
-            if (spaceId == -1) {
-                DEBUG('e', "Error: process table full.\n");
-                delete space;
-                delete newThread;
-                machine->WriteRegister(2, -1);
-                break;
-            }
+
 
             // Fork: si hay argumentos, usar StartProcWithArgs
             if (args != nullptr) {

@@ -21,7 +21,7 @@
 /// and we had a single unsegmented page table.
 /// Now we use the global `usedPages` bitmap to allocate physical frames, so that
 /// multiple programs can coexist in memory.
-AddressSpace::AddressSpace(OpenFile *executable_file)
+AddressSpace::AddressSpace(OpenFile *executable_file, int pid)
 {
     ASSERT(executable_file != nullptr);
 
@@ -33,8 +33,25 @@ AddressSpace::AddressSpace(OpenFile *executable_file)
     numPages = DivRoundUp(size, PAGE_SIZE);
     size = numPages * PAGE_SIZE;
 
-#ifdef DEMAND_LOADING
+#ifdef SWAP
+    /// Creamos el archivo SWAP.X
+    sprintf(swapName, "SWAP.%d", pid);
+    
+    /// Creamos el archivo SWAP.X, si falla terminamos el nachos
+    if (!fileSystem->Create(swapName, size)) {
+        DEBUG('a', "Error: No se pudo crear el archivo de swap %s\n", swapName);
+        ASSERT(false);
+    }
 
+    // Abrimos el archivo
+    swapFile = fileSystem->Open(swapName);
+    ASSERT(swapFile != nullptr);
+    
+    DEBUG('a', "Archivo de SWAP creado: %s con tamaño %u\n", swapName, swapSize);
+#endif
+
+#ifdef DEMAND_LOADING
+    // Creamos la translationEntry
     pageTable = new TranslationEntry[numPages];
     for (unsigned i = 0; i < numPages; i++) {
         pageTable[i].virtualPage  = i;
@@ -43,8 +60,14 @@ AddressSpace::AddressSpace(OpenFile *executable_file)
         pageTable[i].use          = false;
         pageTable[i].dirty        = false;
         pageTable[i].readOnly     = false;
+
+        #ifdef SWAP
+        /// Seteamos esto en false ya que la página nunca fue cargada en RAM
+        pageTable[i].alredyLoaded = false;
+        #endif
     }
 
+    /// Nos guardamos el ejecutable
     executable = executable_file;
 #else
     // Verificar que hay suficientes marcos libres (solo sin carga por demanda)
@@ -62,6 +85,11 @@ AddressSpace::AddressSpace(OpenFile *executable_file)
         pageTable[i].use          = false;
         pageTable[i].dirty        = false;
         pageTable[i].readOnly     = false;
+
+        #ifdef SWAP
+        /// Seteamos esto en true ya que todas las páginas fueron cargadas en la RAM
+        pageTable[i].alredyLoaded = true;
+        #endif
 
         // Limpiamos solamente el marco físico asignado
         memset(&machine->mainMemory[physPage * PAGE_SIZE], 0, PAGE_SIZE);
@@ -117,6 +145,11 @@ AddressSpace::~AddressSpace()
 #ifdef DEMAND_LOADING
     delete executable;
 #endif
+
+#ifdef SWAP
+    delete swapFile;
+#endif 
+
 }
 
 #ifdef DEMAND_LOADING

@@ -10,7 +10,7 @@ public:
 
     ~Coremap();
 
-    void Mark(unsigned pfn);
+    void Mark(unsigned pfn, int vpn, int pid);
 
     void Clear(unsigned pfn);
 

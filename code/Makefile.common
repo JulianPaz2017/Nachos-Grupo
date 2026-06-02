@@ -104,7 +104,10 @@ USERPROG_HDR = userprog/address_space.hh            \
                machine/instruction.hh               \
                machine/machine.hh                   \
                machine/mmu.hh                       \
-               machine/translation_entry.hh
+               machine/translation_entry.hh         \
+               lib/coremap_entry.hh                 \
+               lib/coremap.hh
+
 USERPROG_SRC = userprog/address_space.cc            \
                userprog/args.cc                     \
                userprog/debugger.cc                 \
@@ -122,7 +125,9 @@ USERPROG_SRC = userprog/address_space.cc            \
                machine/instruction.cc               \
                machine/machine.cc                   \
                machine/mips_sim.cc                  \
-               machine/mmu.cc
+               machine/mmu.cc                       \
+               lib/coremap.cc
+
 
 VMEM_HDR =
 VMEM_SRC =

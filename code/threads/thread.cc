@@ -379,6 +379,18 @@ Thread::GetPriority()
     return priority;
 }
 
+void
+Thread::SetPid(unsigned pid)
+{
+    this->pId = pid;
+}
+
+unsigned
+Thread::GetPid()
+{
+    return pId;
+}
+
 #ifdef USER_PROGRAM
 #include "machine/machine.hh"
 

@@ -35,7 +35,7 @@ public:
     /// Parameters:
     /// * `executable_file` is the open file that corresponds to the
     ///   program; it contains the object code to load into memory.
-    AddressSpace(OpenFile *executable_file);
+    AddressSpace(OpenFile *executable_file, int pid);
 
     /// De-allocate an address space.
     ~AddressSpace();
@@ -71,6 +71,12 @@ public:
 private:
     // Almacenamos el ejecutable por si tenemos que cargar más información del mismo
     OpenFile *executable;
+#endif
+
+#ifdef SWAP
+    /// Archivo SWAP.X
+    OpenFile *swapFile;
+    char swapName[16];
 #endif
 
 };

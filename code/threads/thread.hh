@@ -149,6 +149,10 @@ public:
 
     void Print() const;
 
+    void SetPid(unsigned pid);
+
+    unsigned GetPid();
+
 private:
     // Some of the private data for this class is listed above.
 
@@ -175,6 +179,9 @@ private:
 
     // Table with opened files (OPT)
     Table<OpenFile*> *openFiles;
+
+    // PID del hilo
+    unsigned pId;
 
 #ifdef USER_PROGRAM
     /// User-level CPU register state.
