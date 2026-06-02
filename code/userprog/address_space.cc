@@ -152,28 +152,86 @@ AddressSpace::~AddressSpace()
 
 }
 
-#ifdef DEMAND_LOADING
+
+#if defined(SWAP) || defined(DEMAND_LOADING)
 void
 AddressSpace::LoadPage(unsigned vpn)
 {
+    /// Chequeos de seguridad
     ASSERT(vpn < numPages);
     ASSERT(!pageTable[vpn].valid);
 
-    // 1. Asignar un marco físico libre
-    int physPage = usedPages->Find();
-    ASSERT(physPage != -1); // Asegurar que hay memoria física libre disponible
+    /// Diferenciamos el caso de SWAP o no SWAP ya que la
+    /// máquina trabaja con estructuras distintas
+    #ifdef SWAP
+        /// Buscamos un marco físico libre el en coremap
+        int freePpn = coremap->Find();
 
-    pageTable[vpn].physicalPage = physPage;
+        /// Si no hay ninguna página libre, liberamos una página ocupada
+        if (freePpn == -1) {
+            /// Obtenemos el marco físico que vamos a reemplazar
+            int freePpn = coremap->PickVictim();
+
+            /// Guardamos el marco físico en el archivo SWAP del proceso
+            coremap->SavePage(freePpn);
+
+            /// Limpiamos la entrada del coremap
+            coremap->Clear(freePpn);
+
+            /// Limpiamos el marco físico
+            char *physAddr = &machine->mainMemory[freePpn * PAGE_SIZE];
+            memset(physAddr, 0, PAGE_SIZE);
+        }
+
+        #ifdef DEMAND_LOADING
+        /// Si ya fue cargado alguna vez en memoria, cargo la página desde el archivo SWAP
+        if (pageTable[vpn].alredyLoaded) FromSwapFile(vpn, freePpn, physAddr);
+
+        /// En el caso contrario, lo cargo desde el ejecutable
+        else LoadFromExecutable(vpn, freePpn, physAddr);
+
+        #else
+        /// Si no utilizamos DEMAND_LOADING, la página seguro está en el archivo SWAP
+        FromSwapFile(vpn, freePpn, physAddr);
+        #endif
+
+        /// Marcamos el coremap con la nueva página cargada
+        coremap->Mark(freePpn, vpn, currentThread->GetPid());
+    #else
+        /// Buscamos un marco físico libre en el bitmap
+        int freePpn = usedPages->Find();
+        ASSERT(freePpn != -1);
+
+        /// Limpiamos el marco físico asignado 
+        char *physAddr = &machine->mainMemory[freePpn * PAGE_SIZE];
+        memset(physAddr, 0, PAGE_SIZE);
+
+        /// Una vez que el marco físico está limpio, cargamos en memoria RAM la página virtual
+        LoadFromExecutable(vpn, freePpn, physAddr);
+    #endif
+
+    // Actualizamos la tabla de páginas del proceso
+    pageTable[vpn].physicalPage = freePpn;
     pageTable[vpn].valid        = true;
     pageTable[vpn].use          = false;
     pageTable[vpn].dirty        = false;
     pageTable[vpn].readOnly     = false;
+    
+    #ifdef SWAP
+    pageTable[vpn].alredyLoaded = true;
+    #endif
+}
+#endif
 
-    // 2. Limpiar el marco físico asignado (inicializar a cero)
-    char *physAddr = &machine->mainMemory[physPage * PAGE_SIZE];
-    memset(physAddr, 0, PAGE_SIZE);
 
-    // 3. Cargar datos desde el ejecutable si la página virtual intersecta con el código o datos inicializados
+void FromSwapFile(unsigned vpn, int ppn, char* ppAddr) 
+{
+    return;
+}
+
+void LoadFromExecutable(unsigned vpn, int ppn, char* ppAddr) 
+{
+    // Cargamos los datos desde el ejecutable si la página virtual intersecta con el código o datos inicializados
     Executable exe(executable);
     uint32_t pageStartVA = vpn * PAGE_SIZE; // inicio de la página virtual
 
@@ -187,7 +245,7 @@ AddressSpace::LoadPage(unsigned vpn)
         uint32_t offsetInSegment = codeIntersectStart - codeStart;
         uint32_t sizeToRead      = codeIntersectEnd - codeIntersectStart;
         uint32_t destOffset      = codeIntersectStart - pageStartVA;
-        exe.ReadCodeBlock(physAddr + destOffset, sizeToRead, offsetInSegment);
+        exe.ReadCodeBlock(ppAddr + destOffset, sizeToRead, offsetInSegment);
     }
 
     // Intersección con el Segmento de Datos Inicializados
@@ -200,13 +258,13 @@ AddressSpace::LoadPage(unsigned vpn)
         uint32_t offsetInSegment = dataIntersectStart - initDataStart;
         uint32_t sizeToRead      = dataIntersectEnd - dataIntersectStart;
         uint32_t destOffset      = dataIntersectStart - pageStartVA;
-        exe.ReadDataBlock(physAddr + destOffset, sizeToRead, offsetInSegment);
+        exe.ReadDataBlock(ppAddr + destOffset, sizeToRead, offsetInSegment);
     }
 
     DEBUG('a', "DEMAND LOADING: Página virtual %u cargada exitosamente en el marco físico %d.\n",
-          vpn, physPage);
+          vpn, ppn);
 }
-#endif
+
 
 /// Set the initial values for the user-level register set.
 ///

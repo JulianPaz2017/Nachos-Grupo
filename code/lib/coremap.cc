@@ -1,4 +1,6 @@
 #include "coremap.hh"
+#include <time.h>
+#include <stdlib.h>
 
 Coremap::Coremap(unsigned nitems){
 
@@ -60,4 +62,16 @@ Coremap::Print() const {
     printf("Marco %2u: ", i);
     coremap[i].Print();
   }
+}
+
+int \
+Coremap::PickVictim() {
+  #if defined(PRPOLICY_CLOCK)
+    return 0;
+  #elif defined(PRPOLICY_FIFO)
+    return 0;
+  #else
+    /// Política random
+    return rand() % sizeCoremap;
+  #endif
 }

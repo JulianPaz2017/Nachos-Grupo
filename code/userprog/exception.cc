@@ -148,14 +148,15 @@ PageFaultHandler(ExceptionType et)
         ASSERT(false);  // Acceso fuera del espacio de direcciones: error fatal.
     }
 
-#ifdef DEMAND_LOADING
-    // Aumentamos la cantidad de fallos de página
-    stats->numPageFaults++;
+    /// Si no hacemos SWAP o DEMAND_LOADING, nunca vamos a tener que cargar
+    /// una página en memoria. Por ende, nunca vamos a ejecutar este código.
+    #if defined(DEMAND_LOADING) || defined(SWAP)
+        stats->numPageFaults++;
 
-    if (!pageTable[vpn].valid) {
-        currentThread->space->LoadPage(vpn);
-    }
-#endif 
+       if (!currentThread->space->pageTable[vpn].valid) {
+            currentThread->space->LoadPage(vpn);
+        }
+    #endif
 
     // Reemplazamos la entrada indicada por el índice circular.
     machine->GetMMU()->tlb[tlbIndex] = pageTable[vpn];
@@ -163,6 +164,8 @@ PageFaultHandler(ExceptionType et)
     // Avanzar el índice (mod TLB_SIZE) para el próximo reemplazo.
     tlbIndex = (tlbIndex + 1) % TLB_SIZE;
 }
+
+
 #endif  // USE_TLB
 
 

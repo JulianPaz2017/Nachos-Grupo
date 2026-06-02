@@ -206,7 +206,7 @@ Initialize(int argc, char **argv)
 #ifndef SWAP
     usedPages = new Bitmap(machine->GetNumPhysicalPages());
 #else
-    coremap = new Bitmap(machine->GetNumPhysicalPages());
+    coremap = new Coremap(machine->GetNumPhysicalPages());
 #endif
 
     // Tabla de procesos

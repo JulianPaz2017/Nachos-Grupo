@@ -59,7 +59,7 @@ public:
 #endif
             printf("\n");
         }
-}
+    }
 
 private:
    bool use;

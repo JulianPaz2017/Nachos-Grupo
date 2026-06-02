@@ -22,7 +22,9 @@ public:
 
     void Print() const;
 
-    int PickVictim() {return 0;};
+    int PickVictim();
+
+    void SavePage(unsigned ppn);
 private:
     unsigned sizeCoremap;
 
