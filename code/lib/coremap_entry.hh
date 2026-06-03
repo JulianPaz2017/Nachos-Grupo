@@ -29,6 +29,7 @@ public:
         processId = pid;
 
 #ifdef PRPOLICY_FIFO
+        // Aquí podrías usar stats->totalTicks para marcar cuándo se cargó
         pageTime = stats->totalTicks; 
 #endif
     }
@@ -36,6 +37,7 @@ public:
     /// Corrobora si el marco está en uso
     bool IsInUse() const { return use; }
 
+    /// Verifica que la pági
     bool Match(int vpn, int pid) const {
         return use && (virtualPage == vpn) && (processId == pid);
     }
@@ -58,11 +60,6 @@ public:
             printf("\n");
         }
     }
-
-#ifdef PRPOLICY_FIFO
-    unsigned int GetPageTime() const { return pageTime; }
-#endif
-
 
 private:
    bool use;

@@ -7,12 +7,6 @@
 #include "userprog/address_space.hh"
 #endif
 
-// Incluidos para el Clock
-#include "mmu.hh"
-#include "../threads/thread.hh"
-#include "../userprog/address_space.hh"
-
-
 Coremap::Coremap(unsigned nitems){
 
   ASSERT(nitems > 0);
@@ -22,8 +16,6 @@ Coremap::Coremap(unsigned nitems){
 
   // Creamos el coremap
   coremap = new CoremapEntry [nitems];
-
-  clockHand = 0;
 }
 
 Coremap::~Coremap() {
@@ -77,127 +69,12 @@ Coremap::Print() const {
   }
 }
 
-#if defined(USE_TLB) && defined(USER_PROGRAM)
-void
-Coremap::SyncTLBEntry(int pid, int vpn)
-{
-
-
-    if (pid != (int) currentThread->GetPid())
-        return;
-
-    TranslationEntry *tlb = machine->GetMMU()->tlb;
-
-    Thread *thread = processTable->Get(pid);
-    ASSERT(thread != nullptr);
-
-    TranslationEntry *pageTable =
-        thread->space->GetPageTable();
-
-    for (unsigned i = 0; i < TLB_SIZE; i++) {
-
-        if (tlb[i].valid &&
-            tlb[i].virtualPage == (unsigned) vpn) {
-
-            pageTable[vpn].use   |= tlb[i].use;
-            pageTable[vpn].dirty |= tlb[i].dirty;
-
-            break;
-        }
-    }
-  }
-#endif
-
-
-#ifdef USER_PROGRAM
-
-TranslationEntry &
-Coremap::GetEntry(unsigned frame)
-{
-
-    ASSERT(frame < sizeCoremap);
-
-    int pid = coremap[frame].GetProcessId();
-    int vpn = coremap[frame].GetVirtualPage();
-
-  #ifdef USE_TLB
-    SyncTLBEntry(pid, vpn);
-  #endif
-
-    Thread *thread = processTable->Get(pid);
-    ASSERT(thread != nullptr);
-
-    AddressSpace *space = thread->space;
-    ASSERT(space != nullptr);
-
-    return space->GetPageTable()[vpn];
-}
-#endif
-
-
 int \
 Coremap::PickVictim() {
   #if defined(PRPOLICY_CLOCK)
-
-    int candidate = -1;
-
-    // Primera pasada:
-    // buscamos (0,0) y recordamos el primer (0,1)
-    for (unsigned n = 0; n < sizeCoremap; n++) {
-
-        unsigned i = (clockHand + n) % sizeCoremap;
-
-        TranslationEntry &entry = GetEntry(i);
-
-        // Clase (0,0)
-        if (!entry.use && !entry.dirty) {
-            clockHand = (i + 1) % sizeCoremap;
-            return i;
-        }
-
-        // Clase (0,1)
-        if (!entry.use && entry.dirty && candidate == -1) {
-            candidate = i;
-        }
-    }
-
-    // Segunda pasada:
-    // limpiamos use
-    for (unsigned n = 0; n < sizeCoremap; n++) {
-
-        unsigned i = (clockHand + n) % sizeCoremap;
-
-        TranslationEntry &entry = GetEntry(i);
-
-        entry.use = false;
-
-    }
-
-    // Si encontramos una página (0,1), la usamos
-    if (candidate != -1) {
-        clockHand = (candidate + 1) % sizeCoremap;
-        return candidate;
-    }
-
-    // Caso extremo: todas eran (1,x).
-    // Después de limpiar use, elegimos la primera.
-    unsigned victim = clockHand;
-    clockHand = (clockHand + 1) % sizeCoremap;
-    return victim;
-
+    return 0;
   #elif defined(PRPOLICY_FIFO)
-
-    unsigned victim = 0;
-    unsigned oldest = coremap[0].GetPageTime();
-
-    for (unsigned i = 1; i < sizeCoremap; i++) {
-        if (coremap[i].GetPageTime() < oldest) {
-            oldest = coremap[i].GetPageTime();
-            victim = i;
-        }
-    }
-
-    return victim;
+    return 0;
   #else
     /// Política random
     return rand() % sizeCoremap;

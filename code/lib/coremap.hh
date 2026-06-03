@@ -4,7 +4,6 @@
 #include "utility.hh"
 #include "coremap_entry.hh"
 
-#include "system.hh"
 class Coremap {
 public:
     Coremap(unsigned nitems);
@@ -26,20 +25,8 @@ public:
     int PickVictim();
 
     void SavePage(unsigned ppn);
-
-    void SyncTLBEntry(int pid, int vpn);
-    TranslationEntry &GetEntry(unsigned frame);
-    
-
 private:
     unsigned sizeCoremap;
-
-    unsigned clockHand; // Para elegir pagina victima
-
-//#ifdef USER_PROGRAM
-//    void SyncTLBEntry(int pid, int vpn);
-//    TranslationEntry &GetEntry(unsigned frame);
-//#endif
 
     CoremapEntry *coremap;
 };
