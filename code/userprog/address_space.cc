@@ -9,9 +9,6 @@
 #include "address_space.hh"
 #include "executable.hh"
 #include "threads/system.hh"
-#ifdef SWAP
-#include "lib/coremap.hh"
-#endif
 
 #include <string.h>
 
@@ -173,7 +170,7 @@ AddressSpace::LoadPage(unsigned vpn)
         /// Si no hay ninguna página libre, liberamos una página ocupada
         if (freePpn == -1) {
             /// Obtenemos el marco físico que vamos a reemplazar
-            freePpn = coremap->PickVictim();
+            int freePpn = coremap->PickVictim();
 
             /// Guardamos el marco físico en el archivo SWAP del proceso
             coremap->SavePage(freePpn);
@@ -185,8 +182,6 @@ AddressSpace::LoadPage(unsigned vpn)
             char *physAddr = &machine->mainMemory[freePpn * PAGE_SIZE];
             memset(physAddr, 0, PAGE_SIZE);
         }
-
-        char *physAddr = &machine->mainMemory[freePpn * PAGE_SIZE];
 
         #ifdef DEMAND_LOADING
         /// Si ya fue cargado alguna vez en memoria, cargo la página desde el archivo SWAP
@@ -229,31 +224,12 @@ AddressSpace::LoadPage(unsigned vpn)
 #endif
 
 
-#ifdef SWAP
-void
-AddressSpace::WriteToSwap(unsigned vpn, char *physAddr)
+void FromSwapFile(unsigned vpn, int ppn, char* ppAddr) 
 {
-    ASSERT(swapFile != nullptr);
-    int amountWritten = swapFile->WriteAt(physAddr, PAGE_SIZE, vpn * PAGE_SIZE);
-    ASSERT(amountWritten == PAGE_SIZE);
-    stats->numSwapWrites++;
-    DEBUG('a', "SWAP: Página virtual %u guardada en el archivo SWAP desde la memoria.\n", vpn);
-}
-#endif
-
-void 
-AddressSpace::FromSwapFile(unsigned vpn, int ppn, char* ppAddr) 
-{
-    ASSERT(swapFile != nullptr);
-    int amountRead = swapFile->ReadAt(ppAddr, PAGE_SIZE, vpn * PAGE_SIZE);
-    ASSERT(amountRead == PAGE_SIZE);
-    stats->numSwapReads++;
-    DEBUG('a', "SWAP: Página virtual %u cargada desde el archivo SWAP al marco físico %d.\n",
-          vpn, ppn);
+    return;
 }
 
-void 
-AddressSpace::LoadFromExecutable(unsigned vpn, int ppn, char* ppAddr) 
+void LoadFromExecutable(unsigned vpn, int ppn, char* ppAddr) 
 {
     // Cargamos los datos desde el ejecutable si la página virtual intersecta con el código o datos inicializados
     Executable exe(executable);
@@ -337,12 +313,14 @@ AddressSpace::SaveState()
     for (unsigned i = 0; i < TLB_SIZE; i++) {
         if (tlb[i].valid) {
             tlb[i].valid = false;
+            #ifdef SWAP
             unsigned vpn = tlb[i].virtualPage;
             pageTable[vpn].dirty = tlb[i].dirty;
             pageTable[vpn].use   = tlb[i].use;
+            #endif
         }
-    }
     DEBUG('a', "TLB invalidada en cambio de contexto (SaveState).\n");
+    }
 #endif
     // Sin TLB: no hay estado adicional que guardar en este punto.
 

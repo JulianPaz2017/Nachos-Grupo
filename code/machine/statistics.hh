@@ -47,10 +47,6 @@ public:
     /// Number of virtual memory page faults.
     unsigned long numPageFaults;
 
-    /// Intercambio de páginas (Swap)
-    unsigned long numSwapWrites;
-    unsigned long numSwapReads;
-
     /// Contadores para calcular el hit ratio de la TLB (solo con USE_TLB).
     /// hit ratio = tlbHits / (tlbHits + tlbMisses)
     unsigned long tlbHits;    ///< Traducciones encontradas en la TLB (aciertos).
