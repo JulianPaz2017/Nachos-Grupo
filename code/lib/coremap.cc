@@ -2,6 +2,11 @@
 #include <time.h>
 #include <stdlib.h>
 
+#ifdef USER_PROGRAM
+#include "threads/system.hh"
+#include "userprog/address_space.hh"
+#endif
+
 Coremap::Coremap(unsigned nitems){
 
   ASSERT(nitems > 0);
@@ -74,4 +79,47 @@ Coremap::PickVictim() {
     /// Política random
     return rand() % sizeCoremap;
   #endif
+}
+
+void 
+Coremap::SavePage(unsigned ppn) {
+#if defined(USER_PROGRAM) && defined(SWAP)
+    ASSERT(ppn < sizeCoremap);
+    if (!coremap[ppn].IsInUse()) {
+        return;
+    }
+
+    int pid = coremap[ppn].GetProcessId();
+    int vpn = coremap[ppn].GetVirtualPage();
+
+    Thread *thread = processTable->Get(pid);
+    ASSERT(thread != nullptr);
+    AddressSpace *space = thread->space;
+    ASSERT(space != nullptr);
+
+    TranslationEntry *pageTable = space->GetPageTable();
+    TranslationEntry &entry = pageTable[vpn];
+
+#ifdef USE_TLB
+    if (pid == (int)currentThread->GetPid()) {
+        TranslationEntry *tlb = machine->GetMMU()->tlb;
+        for (unsigned i = 0; i < TLB_SIZE; i++) {
+            if (tlb[i].valid && tlb[i].virtualPage == (unsigned)vpn) {
+                entry.dirty = tlb[i].dirty;
+                entry.use = tlb[i].use;
+                tlb[i].valid = false;
+                break;
+            }
+        }
+    }
+#endif
+
+    char *physAddr = &machine->mainMemory[ppn * PAGE_SIZE];
+    space->WriteToSwap(vpn, physAddr);
+
+    entry.physicalPage = -1;
+    entry.valid = false;
+    entry.dirty = false;
+    entry.use = false;
+#endif
 }

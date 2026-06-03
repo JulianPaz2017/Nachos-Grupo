@@ -38,7 +38,12 @@ extern Timer *timer;                 ///< The hardware alarm clock.
 #include "lib/bitmap.hh"
 #include "lib/table.hh"
 extern Machine *machine;  // User program memory and registers.
+#ifndef SWAP
 extern Bitmap *usedPages;              ///< Bitmap de marcos físicos usados.
+#else
+class Coremap;
+extern Coremap *coremap;
+#endif
 extern Table<Thread *> *processTable;  ///< Tabla de procesos en ejecución.
 #endif
 

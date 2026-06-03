@@ -21,6 +21,7 @@ Statistics::Statistics()
     numDiskReads = numDiskWrites = 0;
     numConsoleCharsRead = numConsoleCharsWritten = 0;
     numPageFaults = 0;
+    numSwapWrites = numSwapReads = 0;
     tlbHits = tlbMisses = 0;  // Contadores de la TLB; activos con USE_TLB.
 #ifdef DFS_TICKS_FIX
     tickResets = 0;
@@ -45,6 +46,7 @@ Statistics::Print()
     printf("Console I/O: reads %lu, writes %lu\n",
            numConsoleCharsRead, numConsoleCharsWritten);
     printf("Paging: faults %lu\n", numPageFaults);
+    printf("Swap: reads %lu, writes %lu\n", numSwapReads, numSwapWrites);
 #ifdef USE_TLB
     // Calcular e imprimir el hit ratio de la TLB.
     unsigned long tlbTotal = tlbHits + tlbMisses;

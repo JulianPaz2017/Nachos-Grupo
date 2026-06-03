@@ -60,7 +60,17 @@ public:
     void LoadPage(unsigned vpn);
     #endif
 
+    #ifdef SWAP
+    /// Escribe una página al archivo de SWAP
+    void WriteToSwap(unsigned vpn, char *physAddr);
+    #endif
+
 private:
+
+    #if defined(SWAP) || defined(DEMAND_LOADING)
+    void FromSwapFile(unsigned vpn, int ppn, char* ppAddr);
+    void LoadFromExecutable(unsigned vpn, int ppn, char* ppAddr);
+    #endif
 
     /// Assume linear page table translation for now!
     TranslationEntry *pageTable;

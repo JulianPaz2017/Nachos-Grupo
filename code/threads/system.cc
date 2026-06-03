@@ -272,7 +272,11 @@ Cleanup()
 
 #ifdef USER_PROGRAM
     // La borramos acá ya que la necesitamos para eliminar los hilos
+    #ifndef SWAP
     delete usedPages;
+    #else
+    delete coremap;
+    #endif
 #endif 
 
     exit(0);

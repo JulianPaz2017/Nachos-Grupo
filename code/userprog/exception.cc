@@ -159,6 +159,11 @@ PageFaultHandler(ExceptionType et)
     #endif
 
     // Reemplazamos la entrada indicada por el índice circular.
+    if (machine->GetMMU()->tlb[tlbIndex].valid) {
+        unsigned oldVpn = machine->GetMMU()->tlb[tlbIndex].virtualPage;
+        pageTable[oldVpn].dirty = machine->GetMMU()->tlb[tlbIndex].dirty;
+        pageTable[oldVpn].use   = machine->GetMMU()->tlb[tlbIndex].use;
+    }
     machine->GetMMU()->tlb[tlbIndex] = pageTable[vpn];
 
     // Avanzar el índice (mod TLB_SIZE) para el próximo reemplazo.
