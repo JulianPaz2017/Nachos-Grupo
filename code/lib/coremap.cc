@@ -1,7 +1,7 @@
 #ifdef SWAP
+#include "threads/system.hh"
 #include "coremap.hh"
 #include "userprog/address_space.hh"
-#include "threads/system.hh"
 #include "machine/machine.hh"
 #include <time.h>
 #include <stdlib.h>
@@ -87,7 +87,7 @@ Coremap::PickVictim()
   #elif defined(PRPOLICY_FIFO)
     /// Política FIFO: Seleccionamos la entrada más vieja
     unsigned victim = 0;
-    unsigned oldest = coremap[0].GetPageTime();
+    unsigned long oldest = coremap[0].GetPageTime();
 
     for (unsigned i = 1; i < sizeCoremap; i++) {
       if (coremap[i].GetPageTime() < oldest) {
@@ -96,10 +96,12 @@ Coremap::PickVictim()
       }
     }
 
+    DEBUG('a', "FIFO POLICY\n");
     return victim;
   #else
-    /// Política RANDOM: Seleccionamos al azar
-    return rand() % sizeCoremap;
+  /// Política RANDOM: Seleccionamos al azar
+  DEBUG('a', "RANDOM POLICY\n");
+  return rand() % sizeCoremap;
   #endif
 }
 

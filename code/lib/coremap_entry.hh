@@ -3,8 +3,12 @@
 
 
 #include "lib/utility.hh"
+#include "machine/machine.hh"
+#include "machine/statistics.hh"
 #include <unistd.h>
 #include <stdio.h>
+
+extern Statistics *stats;
 
 class AddressSpace;
 
@@ -73,6 +77,10 @@ public:
         }
     }
 
+    #ifdef PRPOLICY_FIFO
+    unsigned long GetPageTime() { return pageTime; }
+    #endif
+
 private:
     /// Representa si el marco físico está ocupado
     bool inUse;
@@ -89,7 +97,7 @@ private:
 
     #ifdef PRPOLICY_FIFO
     /// Instante de tiempo en el que se ocupó el marco físico
-    unsigned int pageTime;
+    unsigned long pageTime;
     #endif
 };
 
