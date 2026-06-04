@@ -50,6 +50,11 @@ private:
 
     /// Arreglo de entradas del coremap
     CoremapEntry *coremap;
+
+    #ifdef PRPOLICY_CLOCK
+    /// Manecilla del reloj para el algoritmo de reemplazo Clock
+    unsigned clockHand;
+    #endif
 };
 
 

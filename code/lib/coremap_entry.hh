@@ -60,6 +60,11 @@ public:
     /// con propósitos de I/O
     void Unlock() { isLocked = false; }
 
+    #ifdef PRPOLICY_FIFO
+    /// Devuelve el instante de tiempo en el que se cargó la página
+    unsigned int GetPageTime() { return pageTime; }
+    #endif
+
     /// Imprime una entrada del coremap
     void Print() {
         if (!inUse) printf("[   LIBRE   ]\n");
