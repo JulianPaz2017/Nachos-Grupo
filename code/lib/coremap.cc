@@ -87,7 +87,7 @@ int \
 Coremap::PickVictim() 
 {
   #if defined(PRPOLICY_CLOCK)
-    /// Política CLOCK Mejorado (Enhanced Clock / NRU):
+    /// Política CLOCK:
     /// Prioridad de víctima según (use, dirty):
     ///   Clase 1: use=0, dirty=0  -> mejor víctima
     ///   Clase 2: use=0, dirty=1
@@ -104,7 +104,7 @@ Coremap::PickVictim()
       for (unsigned i = 0; i < sizeCoremap; i++) {
         unsigned ppn = (clockHand + i) % sizeCoremap;
 
-        if (!coremap[ppn].IsInUse() || coremap[ppn].IsLocked()) continue;
+        if (!coremap[ppn].IsInUse()) continue;
 
         /// Leemos los bits use y dirty de la tabla de páginas del proceso dueño.
         /// Si el proceso es el actual y usa TLB, sincronizamos primero.

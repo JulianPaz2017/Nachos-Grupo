@@ -148,12 +148,20 @@ PageFaultHandler(ExceptionType et)
         ASSERT(false);  // Acceso fuera del espacio de direcciones: error fatal.
     }
 
+    // Antes de ocupar esta entrada de la TLB, guardamos el estado de la que vamos a pisar
+    TranslationEntry *oldEntry = &machine->GetMMU()->tlb[tlbIndex];
+    if (oldEntry->valid) {
+        // Actualizamos los bits en la tabla de páginas global del proceso
+        pageTable[oldEntry->virtualPage].dirty |= oldEntry->dirty;
+        pageTable[oldEntry->virtualPage].use |= oldEntry->use;
+    }
+
     /// Si no hacemos SWAP o DEMAND_LOADING, nunca vamos a tener que cargar
     /// una página en memoria. Por ende, nunca vamos a ejecutar este código.
     #if defined(DEMAND_LOADING) || defined(SWAP)
-        stats->numPageFaults++;
-
+    
         if (!pageTable[vpn].valid) {
+            stats->numPageFaults++;
             currentThread->space->LoadPage(vpn);
         }
     #endif
