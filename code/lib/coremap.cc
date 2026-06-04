@@ -161,6 +161,7 @@ Coremap::PickVictim()
 
     /// Fallback: nunca debería llegar aquí si el coremap tiene al menos
     /// una página en uso y no bloqueada.
+    DEBUG('a', "CLOCK POLICY\n");
     return clockHand % sizeCoremap;
 
   #elif defined(PRPOLICY_FIFO)

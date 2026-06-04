@@ -17,8 +17,7 @@
 #   -DPRPOLICY_FIFO   : reemplaza la página más antigua (FIFO)
 #   -DPRPOLICY_CLOCK  : algoritmo mejorado del reloj (Enhanced Clock / NRU)
 #   (sin flag)        : reemplazo aleatorio (RANDOM, comportamiento por defecto)
-DEFINES      = -DUSER_PROGRAM  -DFILESYS_NEEDED -DFILESYS_STUB -DVMEM \
-               -DUSE_TLB -DDFS_TICKS_FIX -DDEMAND_LOADING -DSWAP -DPRPOLICY_CLOCK
+DEFINES      = -DUSER_PROGRAM -DFILESYS_NEEDED -DFILESYS_STUB -DVMEM -DUSE_TLB -DDFS_TICKS_FIX -DDEMAND_LOADING -DSWAP -DTRACE_PAGES
 INCLUDE_DIRS = -I.. -I../filesys -I../bin -I../userprog -I../threads \
                -I../machine
 HDR_FILES    = $(THREAD_HDR) $(USERPROG_HDR) $(VMEM_HDR)

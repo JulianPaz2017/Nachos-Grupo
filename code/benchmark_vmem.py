@@ -172,13 +172,16 @@ def build(policy_name: str, policy_flag: str, extra_flags: str = "") -> bool:
 # Ejecución de Nachos
 # ──────────────────────────────────────────────────────────────────────────────
 
-def run_nachos(program: str, timeout: int = 300) -> tuple[str, str, int]:
+def run_nachos(program: str, timeout: int = 300, num_frames: int = 0) -> tuple[str, str, int]:
     """
-    Ejecuta `./nachos -x ../userland/<program>` en el directorio vmem.
+    Ejecuta `./nachos [-m num_frames] -x ../userland/<program>` en el directorio vmem.
     Retorna (stdout, stderr, returncode).
     """
     prog_path = f"../userland/{program}"
-    cmd = [str(NACHOS_BIN), "-x", prog_path]
+    cmd = [str(NACHOS_BIN)]
+    if num_frames > 0:
+        cmd += ["-m", str(num_frames)]
+    cmd += ["-x", prog_path]
     result = subprocess.run(
         cmd,
         cwd=str(VMEM_DIR),
@@ -264,7 +267,7 @@ def collect_trace(program: str) -> list[int]:
 # ──────────────────────────────────────────────────────────────────────────────
 
 def benchmark(program: str, policy_name: str, runs: int, skip_build: bool,
-              policy_flag: str, extra_flags: str = "") -> dict:
+              policy_flag: str, extra_flags: str = "", num_frames: int = 0) -> dict:
     """Ejecuta `runs` veces Nachos y devuelve las métricas promediadas."""
     if not skip_build:
         ok = build(policy_name, policy_flag, extra_flags)
@@ -273,7 +276,7 @@ def benchmark(program: str, policy_name: str, runs: int, skip_build: bool,
 
     results: dict[str, list] = defaultdict(list)
     for r in range(runs):
-        stdout, stderr, rc = run_nachos(program)
+        stdout, stderr, rc = run_nachos(program, num_frames=num_frames)
         combined = stdout + "\n" + stderr
         m = parse_stats(combined)
         for k, v in m.items():
@@ -373,7 +376,7 @@ def detect_num_frames() -> int:
 # Captura de trazas con TRACE_PAGES
 # ──────────────────────────────────────────────────────────────────────────────
 
-def collect_trace_with_build(program: str) -> list[int]:
+def collect_trace_with_build(program: str, num_frames: int = 0) -> list[int]:
     """
     Recompila con -DTRACE_PAGES y ejecuta para capturar la traza.
     """
@@ -387,7 +390,7 @@ def collect_trace_with_build(program: str) -> list[int]:
     print("OK")
 
     print(f"  [trace] Ejecutando {program} para capturar traza...", end=" ", flush=True)
-    stdout, stderr, rc = run_nachos(program, timeout=600)
+    stdout, stderr, rc = run_nachos(program, timeout=600, num_frames=num_frames)
     combined = stdout + "\n" + stderr
     pages = [int(m) for m in PTRACE_PATTERN.findall(combined)]
     if pages:
@@ -427,7 +430,7 @@ def main():
     )
     args = parser.parse_args()
 
-    num_frames = args.frames if args.frames else detect_num_frames()
+    num_frames = args.frames if args.frames else 32
     print(f"\n{'='*60}")
     print(f"  Nachos – Benchmark de Reemplazo de Páginas")
     print(f"  Marcos de memoria: {num_frames}")
@@ -453,6 +456,7 @@ def main():
                 runs=args.runs,
                 skip_build=args.skip_build,
                 policy_flag=pol_flag,
+                num_frames=num_frames,
             )
             pol_data[pol_name] = result
             pf = result.get("pageFaults", "N/A")
@@ -464,7 +468,7 @@ def main():
         opt_result: dict = {}
         if not args.no_opt:
             print(f"\n  Política: ÓPTIMO (Bélády off-line)")
-            trace = collect_trace_with_build(program)
+            trace = collect_trace_with_build(program, num_frames=num_frames)
             if trace:
                 opt_faults = optimal_faults(trace, num_frames)
                 print(f"    Fallos óptimos (OPT, {num_frames} marcos): {opt_faults}")
