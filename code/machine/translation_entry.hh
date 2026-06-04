@@ -53,12 +53,6 @@ public:
 
     /// This bit is set by the hardware every time the page is modified.
     bool dirty;
-
-    #ifdef SWAP
-    /// Identifica si una página ya fue cargada en RAM en algún momento
-    bool alredyLoaded;
-    #endif
-
 };
 
 

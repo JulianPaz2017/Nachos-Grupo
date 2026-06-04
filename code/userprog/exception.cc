@@ -153,7 +153,7 @@ PageFaultHandler(ExceptionType et)
     #if defined(DEMAND_LOADING) || defined(SWAP)
         stats->numPageFaults++;
 
-       if (!currentThread->space->pageTable[vpn].valid) {
+        if (!pageTable[vpn].valid) {
             currentThread->space->LoadPage(vpn);
         }
     #endif
@@ -396,12 +396,16 @@ SyscallHandler(ExceptionType _et)
                 // En el caso contrario, leemos desde el archivo indicado
                 else {
                     // Buscamos el fileID dentro de la tabla de fd del thread actual
-                    OpenFile *openFile = currentThread->GetOpenFile(fileID);
+                    OpenFile *openFile = nullptr;
+                    if (fileID >= 0) {
+                        openFile = currentThread->GetOpenFile(fileID);
+                    }
                                     
                     // Si es nullptr devolvemos error al usuario
                     if (openFile == nullptr) {
                         DEBUG('e', "Error: fileID `%d` is not related to an opened file.\n", fileID);
                         machine->WriteRegister(2, -1);
+                        break;
                     }
 
                     // En caso contrario, leemos desde el archivo
@@ -464,12 +468,16 @@ SyscallHandler(ExceptionType _et)
                 // En el caso contrario, escribimos el archivo indicado
                 else {
                     // Buscamos el fileID dentro de la tabla de fd del thread actual
-                    OpenFile *openFile = currentThread->GetOpenFile(fileID);
+                    OpenFile *openFile = nullptr;
+                    if (fileID >= 0) {
+                        openFile = currentThread->GetOpenFile(fileID);
+                    }
                                     
                     // Si es nullptr devolvemos error al usuario
                     if (openFile == nullptr) {
                         DEBUG('e', "Error: fileID `%d` is not related to an opened file.\n", fileID);
                         machine->WriteRegister(2, -1);
+                        break;
                     }
 
                     // En caso contrario, leemos desde el archivo
@@ -547,12 +555,6 @@ SyscallHandler(ExceptionType _et)
             AddressSpace *space = new AddressSpace(executable, spaceId);
             newThread->space = space;
 
-#ifndef DEMAND_LOADING
-            // Si no estamos usando demand loading, eliminamos el ejecutable
-            // ya que toda su información se cargó en el espacio de direcciones
-            delete executable;
-#endif
-
             // Fork del hilo
             newThread->Fork(StartProc, nullptr);
 
@@ -565,7 +567,7 @@ SyscallHandler(ExceptionType _et)
             int spaceId = machine->ReadRegister(4);
             DEBUG('e', "`Join` requested for SpaceId %d.\n", spaceId);
 
-            if (!processTable->HasKey(spaceId)) {
+            if (spaceId < 0 || !processTable->HasKey(spaceId)) {
                 DEBUG('e', "Error: invalid SpaceId %d.\n", spaceId);
                 machine->WriteRegister(2, -1);
                 break;
@@ -631,14 +633,6 @@ SyscallHandler(ExceptionType _et)
             newThread->SetPid(spaceId);
             AddressSpace *space = new AddressSpace(executable, spaceId);
             newThread->space = space;
-
-
-#ifndef DEMAND_LOADING
-            // Si no estamos usando demand loading, eliminamos el ejecutable
-            // ya que toda su información se cargó en el espacio de direcciones
-            delete executable;
-#endif
-
 
 
             // Fork: si hay argumentos, usar StartProcWithArgs

@@ -6,68 +6,91 @@
 #include <unistd.h>
 #include <stdio.h>
 
+class AddressSpace;
 
 class CoremapEntry {
 public:
-    /// Por defecto llamamos a clear en el constructor
+    /// Crea una nueva entrada de la coremap
     CoremapEntry() { Clear(); }
 
-    /// Inicializa o libera el marco
+    /// Inicializa una entrada de la coremap
     void Clear() {
-        use = false;
-        virtualPage = -1;
-        processId = -1;
-#ifdef PRPOLICY_FIFO
-        pageTime = 0;
-#endif
+        this->inUse = false;
+        this->virtualPage = -1;
+        this->addressSpace = nullptr;
+        this->isLocked = false;
+
+        #ifdef PRPOLICY_FIFO
+        this->pageTime = 0;
+        #endif
     }
 
     /// Asocia el marco a un proceso y página virtual
-    void Set(int vpn, int pid) {
-        use = true;
+    void Set(int vpn, AddressSpace* addrSpace) {
+        ASSERT(vpn >= 0);
+        ASSERT(addrSpace != nullptr);
+
+        inUse = true;
+        isLocked = false;
         virtualPage = vpn;
-        processId = pid;
+        addressSpace = addrSpace;
 
-#ifdef PRPOLICY_FIFO
-        // Aquí podrías usar stats->totalTicks para marcar cuándo se cargó
-        pageTime = stats->totalTicks; 
-#endif
+        #ifdef PRPOLICY_FIFO
+            pageTime = stats->totalTicks; 
+        #endif
     }
 
-    /// Corrobora si el marco está en uso
-    bool IsInUse() const { return use; }
+    /// Verifica si la página está en uso o no
+    bool IsInUse() { return inUse; }
 
-    /// Verifica que la pági
-    bool Match(int vpn, int pid) const {
-        return use && (virtualPage == vpn) && (processId == pid);
-    }
+    /// Verifica si la página está bloqueada o no
+    bool IsLocked() { return isLocked; }
     
-    /// Getter para el PID
-    int GetProcessId() const { return processId; }
-    
-    /// Getter para la VPN
-    int GetVirtualPage() const { return virtualPage; }
+    /// Getter para el número de página virtual
+    int GetVirtualPage() { return virtualPage; }
 
-    /// Imprime una entrade del coremap
-    void Print() const {        
-        if (!use) {
-            printf("[   LIBRE   ]\n");
-        } else {
-            printf("[  OCUPADO  ] PID: %3d | VPN: %3d", processId, virtualPage);
-#ifdef PRPOLICY_FIFO
+    /// Getter del espacio de direcciones
+    AddressSpace* GetAddressSpace() { return addressSpace; }
+    
+    /// Indica que el marco físico está siendo utilizado
+    /// con propósitos de I/O
+    void Lock() { isLocked = true; }
+
+    /// Indica que el marco físico está dejó de ser utilizado
+    /// con propósitos de I/O
+    void Unlock() { isLocked = false; }
+
+    /// Imprime una entrada del coremap
+    void Print() {
+        if (!inUse) printf("[   LIBRE   ]\n");
+
+        else {
+            printf("[  OCUPADO  ] VPN: %3d", virtualPage);
+            #ifdef PRPOLICY_FIFO
             printf(" | Tick: %7u", pageTime);
-#endif
+            #endif
             printf("\n");
         }
     }
 
 private:
-   bool use;
-   int virtualPage;
-   int processId;
-#ifdef PRPOLICY_FIFO
-   unsigned int pageTime;
-#endif
+    /// Representa si el marco físico está ocupado
+    bool inUse;
+
+    /// Representa si el marco físico está siendo utilizado para
+    /// un propósito de I/O
+    bool isLocked;
+
+    /// Número página virtual asociada al marco físico
+    int virtualPage;
+
+    /// Espacio de direcciones dueño de la página virtual
+    AddressSpace *addressSpace;
+
+    #ifdef PRPOLICY_FIFO
+    /// Instante de tiempo en el que se ocupó el marco físico
+    unsigned int pageTime;
+    #endif
 };
 
 #endif

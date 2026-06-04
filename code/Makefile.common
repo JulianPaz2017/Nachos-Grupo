@@ -104,9 +104,8 @@ USERPROG_HDR = userprog/address_space.hh            \
                machine/instruction.hh               \
                machine/machine.hh                   \
                machine/mmu.hh                       \
-               machine/translation_entry.hh         \
-               lib/coremap_entry.hh                 \
-               lib/coremap.hh
+               machine/translation_entry.hh         
+               
 
 USERPROG_SRC = userprog/address_space.cc            \
                userprog/args.cc                     \
@@ -125,12 +124,14 @@ USERPROG_SRC = userprog/address_space.cc            \
                machine/instruction.cc               \
                machine/machine.cc                   \
                machine/mips_sim.cc                  \
-               machine/mmu.cc                       \
-               lib/coremap.cc
+               machine/mmu.cc                       
 
 
-VMEM_HDR =
-VMEM_SRC =
+
+VMEM_HDR = lib/coremap_entry.hh \
+           lib/coremap.hh
+VMEM_SRC = lib/coremap.cc
+           
 
 FILESYS_HDR = filesys/directory.hh       \
               filesys/directory_entry.hh \

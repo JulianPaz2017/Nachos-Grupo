@@ -21,10 +21,10 @@
 
 const unsigned USER_STACK_SIZE = 1024;  ///< Increase this as necessary!
 
+class Bitmap;
 
 class AddressSpace {
 public:
-
     /// Create an address space to run a user program.
     ///
     /// The address space is initialized from an already opened file.
@@ -44,21 +44,38 @@ public:
     void InitRegisters();
 
     /// Save/restore address space-specific info on a context switch.
-
     void SaveState();
     void RestoreState();
 
     /// Retorna un puntero de solo lectura a la tabla de páginas del proceso.
     /// Usado por el PageFaultHandler para cargar entradas faltantes en la TLB.
-    TranslationEntry *GetPageTable() { return pageTable; }
+    TranslationEntry *GetPageTable();
 
-    /// Retorna la cantidad de páginas virtuales de este espacio de direcciones.
-    unsigned GetNumPages() const { return numPages; }
+    /// Getter de la cantidad de páginas
+    unsigned GetNumPages() const;
 
-    #if defined(SWAP) || defined(DEMAND_LOADING)
+    /// Getter del PID
+    int GetPid();
+
     /// Carga una página virtual en memoria física
     void LoadPage(unsigned vpn);
+
+    /// Getter del archivo ejecutable
+    OpenFile* GetExecutableFile();
+
+    #ifdef SWAP
+    /// Getter de la shadowTable
+    Bitmap* GetShadowTable();
+
+    /// Carga desde el archivo SWAP
+    void LoadFromSwapFile(unsigned vpn, int ppn, char* ppAddr);
+
+    /// Escribe una página virtual en SWAP.pid
+    void WriteToSwap(unsigned vpn, char* physicalAddress);
     #endif
+    
+    /// Carga desde el ejecutable
+    void LoadFromExecutable(unsigned vpn, int ppn, char* ppAddr);
 
 private:
 
@@ -68,17 +85,20 @@ private:
     /// Number of pages in the virtual address space.
     unsigned numPages;
 
-#ifdef DEMAND_LOADING
-    // Almacenamos el ejecutable por si tenemos que cargar más información del mismo
-    OpenFile *executable;
-#endif
+    /// PID del thread dueño de este espacio de direcciones
+    int pId;
 
-#ifdef SWAP
+    // Almacenamos el ejecutable por si tenemos que cargar más información del mismo
+    OpenFile *executableFile;
+
+    #ifdef SWAP
     /// Archivo SWAP.X
     OpenFile *swapFile;
     char swapName[16];
-#endif
 
+    /// Bitmap para determinar si una página está en el ejecutable/SWAP.pid
+    Bitmap *shadowTable;
+    #endif
 };
 
 

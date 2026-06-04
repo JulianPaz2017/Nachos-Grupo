@@ -25,7 +25,9 @@ Statistics::Statistics()
 #ifdef DFS_TICKS_FIX
     tickResets = 0;
 #endif
-
+#ifdef SWAP
+    numSwapWrites = numSwapReads = 0;
+#endif
 }
 
 /// Print performance metrics, when we have finished everything at system
@@ -45,6 +47,9 @@ Statistics::Print()
     printf("Console I/O: reads %lu, writes %lu\n",
            numConsoleCharsRead, numConsoleCharsWritten);
     printf("Paging: faults %lu\n", numPageFaults);
+#ifdef SWAP
+    printf("Swap: reads %lu, writes %lu\n", numSwapReads, numSwapWrites);
+#endif
 #ifdef USE_TLB
     // Calcular e imprimir el hit ratio de la TLB.
     unsigned long tlbTotal = tlbHits + tlbMisses;
