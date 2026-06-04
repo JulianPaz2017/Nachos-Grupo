@@ -162,6 +162,11 @@ PageFaultHandler(ExceptionType et)
     
         if (!pageTable[vpn].valid) {
             stats->numPageFaults++;
+            #ifdef TRACE_PAGES
+            /// Emitir la traza de accesos de página para el algoritmo óptimo.
+            /// El script de benchmark captura estas líneas desde stderr.
+            fprintf(stderr, "PTRACE %u\n", vpn);
+            #endif
             currentThread->space->LoadPage(vpn);
         }
     #endif
