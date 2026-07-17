@@ -159,6 +159,10 @@ def build(policy_name: str, policy_flag: str, extra_flags: str = "") -> bool:
     print(f"  [build] Compilando con política {policy_name}...", end=" ", flush=True)
     patch_makefile(policy_flag, extra_flags)
 
+    # Limpiar binarios anteriores para forzar la recompilación con los nuevos flags
+    run(["make", "clean"], cwd=VMEM_DIR)
+    run(["make", "depend"], cwd=VMEM_DIR)
+
     stdout, stderr, rc = run(["make", "-j4"], cwd=VMEM_DIR)
     if rc != 0:
         print("ERROR")
@@ -380,14 +384,11 @@ def collect_trace_with_build(program: str, num_frames: int = 0) -> list[int]:
     """
     Recompila con -DTRACE_PAGES y ejecuta para capturar la traza.
     """
-    print(f"  [trace] Compilando con TRACE_PAGES para {program}...", end=" ", flush=True)
     # Usamos RANDOM + TRACE_PAGES para la traza (la política no importa para OPT)
-    patch_makefile("", extra_flags="-DTRACE_PAGES")
-    stdout_b, stderr_b, rc = run(["make", "-j4"], cwd=VMEM_DIR)
-    if rc != 0:
+    ok = build("TRACE_PAGES", "", "-DTRACE_PAGES")
+    if not ok:
         print("ERROR (build)")
         return []
-    print("OK")
 
     print(f"  [trace] Ejecutando {program} para capturar traza...", end=" ", flush=True)
     stdout, stderr, rc = run_nachos(program, timeout=600, num_frames=num_frames)
