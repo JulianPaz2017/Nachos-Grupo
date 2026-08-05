@@ -52,11 +52,24 @@ Directory::~Directory()
 
 /// Read the contents of the directory from disk.
 ///
+/// Recalculates `tableSize` from the actual file length so that entries
+/// added by concurrent threads (which extend the file) are visible.
+///
 /// * `file` is file containing the directory contents.
 void
 Directory::FetchFrom(OpenFile *file)
 {
     ASSERT(file != nullptr);
+
+    // Derive real table size from the file length on disk.
+    unsigned diskTableSize  = file->Length() / sizeof (DirectoryEntry);
+
+    if (diskTableSize > raw.tableSize) {
+        // Directory grew since we were constructed; reallocate table.
+        delete [] raw.table;
+        raw.table     = new DirectoryEntry[diskTableSize];
+        raw.tableSize = diskTableSize;
+    }
     file->ReadAt((char *) raw.table,
                  raw.tableSize * sizeof (DirectoryEntry), 0);
 }
@@ -109,12 +122,14 @@ Directory::Find(const char *name)
 
 /// Add a file into the directory.  Return true if successful; return false
 /// if the file name is already in the directory, or if the directory is
-/// completely full, and has no more space for additional file names.
+/// completely full and no `file` handle was provided to extend it.
 ///
 /// * `name` is the name of the file being added.
 /// * `newSector` is the disk sector containing the added file's header.
+/// * `file` (optional) is the open directory file; when provided, the
+///   directory is extended by one entry if there is no free slot.
 bool
-Directory::Add(const char *name, int newSector)
+Directory::Add(const char *name, int newSector, OpenFile *file)
 {
     ASSERT(name != nullptr);
 
@@ -130,7 +145,27 @@ Directory::Add(const char *name, int newSector)
             return true;
         }
     }
-    return false;  // no space.  Fix when we have extensible files.
+
+    // Si no había lugar, agrandamos la tabla en memoria
+    if (file == nullptr) {
+        return false;  // Cannot extend without a file handle.
+    }
+
+    unsigned newSize = raw.tableSize + 1;
+    DirectoryEntry *newTable = new DirectoryEntry[newSize];
+    for (unsigned i = 0; i < raw.tableSize; i++) {
+        newTable[i] = raw.table[i];
+    }
+    
+    newTable[raw.tableSize].inUse  = true;
+    strncpy(newTable[raw.tableSize].name, name, FILE_NAME_MAX_LEN);
+    newTable[raw.tableSize].name[FILE_NAME_MAX_LEN] = '\0';
+    newTable[raw.tableSize].sector = newSector;
+
+    delete [] raw.table;
+    raw.table     = newTable;
+    raw.tableSize = newSize;
+    return true;
 }
 
 /// Remove a file name from the directory.   Return true if successful;

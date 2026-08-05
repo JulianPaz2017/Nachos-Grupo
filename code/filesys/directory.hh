@@ -46,8 +46,9 @@ public:
     /// Find the sector number of the `FileHeader` for file: `name`.
     int Find(const char *name);
 
-    /// Add a file name into the directory.
-    bool Add(const char *name, int newSector);
+    /// Add a file name into the directory, extending it on disk if needed.
+    /// `file` must be non-null when directory growth is desired.
+    bool Add(const char *name, int newSector, OpenFile *file = nullptr);
 
     /// Remove a file from the directory.
     bool Remove(const char *name);

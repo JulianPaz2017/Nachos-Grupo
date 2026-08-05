@@ -97,6 +97,9 @@ public:
 #include "directory_entry.hh"
 #include "machine/disk.hh"
 
+class Lock;
+class FileHeader;
+
 
 /// Initial file sizes for the bitmap and directory; until the file system
 /// supports extensible files, the directory size sets the maximum number of
@@ -107,6 +110,13 @@ static const unsigned DIRECTORY_FILE_SIZE
   = sizeof (DirectoryEntry) * NUM_DIR_ENTRIES;
 
 
+struct OpenFileEntry {
+    unsigned sector;         ///< Sector del `FileHeader` de este archivo.
+    int refCount;            ///< Cuántos `OpenFile` lo tienen abierto.
+    bool pendingRemove;      ///< `Remove` se pidió mientras estaba abierto.
+    Lock *accessLock;        ///< Serializa Read/Write/Extend de este archivo.
+    OpenFileEntry *next;
+};
 class FileSystem {
 public:
 
@@ -137,11 +147,34 @@ public:
     /// List all the files and their contents.
     void Print();
 
+    /// Usados por `OpenFile` para registrarse/desregistrarse en la tabla de
+    /// archivos abiertos.  Devuelve el lock de acceso a datos compartido por
+    /// todos los `OpenFile` de ese sector.
+    Lock *AcquireOpen(unsigned sector);
+    void ReleaseOpen(unsigned sector);
+
+    /// Extiende el archivo cuyo header ya está en memoria Devuelve false si no hay
+    /// espacio en el disco.
+    bool ExtendFile(FileHeader *hdr, unsigned sector, unsigned newSize);
+
+
 private:
     OpenFile *freeMapFile;  ///< Bit map of free disk blocks, represented as a
                             ///< file.
     OpenFile *directoryFile;  ///< “Root” directory -- list of file names,
                               ///< represented as a file.
+    
+    Lock *freeMapLock;      ///< Protege todo acceso al bitmap en disco.
+    Lock *directoryLock;    ///< Protege todo acceso al directorio en disco.
+    Lock *openFilesLock;    ///< Protege la lista `openFilesHead`.
+    OpenFileEntry *openFilesHead;
+
+    /// Asume `openFilesLock` tomado por quien llama.
+    OpenFileEntry *FindOpenEntry(unsigned sector);
+
+    /// Libera en disco los sectores de header+datos de `sector`.  Toma
+    /// `freeMapLock` internamente.
+    void DeallocateSector(unsigned sector);
 };
 
 #endif

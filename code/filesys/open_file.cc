@@ -24,6 +24,18 @@
 /// * `sector` is the location on disk of the file header for this file.
 OpenFile::OpenFile(int sector)
 {
+    this->sector = (unsigned)sector;
+ 
+    if (fileSystem != nullptr) {
+        // Caso normal: se registra en la tabla de abiertos de FileSystem y
+        // recibe el lock de acceso a datos compartido por todos los
+        // OpenFile de este sector.
+        accessLock = fileSystem->AcquireOpen(sector);
+    } else {
+        // Caso especial: archivo "absurdo" (sector 0 o FileSystem nulo)
+        // Se crea un lock igual para evitar crashes, aunque el archivo no sea válido.
+        accessLock = new Lock("file access lock");
+    }
     hdr = new FileHeader;
     hdr->FetchFrom(sector);
     seekPosition = 0;
@@ -33,6 +45,13 @@ OpenFile::OpenFile(int sector)
 OpenFile::~OpenFile()
 {
     delete hdr;
+    if (fileSystem != nullptr){
+        // Se puede liberar el lock ya que no vamos a usar mas el archivo.
+        fileSystem->ReleaseOpen(sector);
+    }
+    else{
+        delete accessLock;
+    }
 }
 
 /// Change the current location within the open file -- the point at which
@@ -110,11 +129,17 @@ OpenFile::ReadAt(char *into, unsigned numBytes, unsigned position)
     ASSERT(into != nullptr);
     ASSERT(numBytes > 0);
 
+    // Tomamos el lock de acceso a datos compartidos
+    accessLock->Acquire();
+    hdr->FetchFrom(sector);
+
     unsigned fileLength = hdr->FileLength();
     unsigned firstSector, lastSector, numSectors;
     char *buf;
 
     if (position >= fileLength) {
+        // Soltamos el lock antes de retornar
+        accessLock->Release();
         return 0;  // Check request.
     }
     if (position + numBytes > fileLength) {
@@ -137,6 +162,10 @@ OpenFile::ReadAt(char *into, unsigned numBytes, unsigned position)
     // Copy the part we want.
     memcpy(into, &buf[position - firstSector * SECTOR_SIZE], numBytes);
     delete [] buf;
+    
+    // Soltamos el lock de acceso a datos compartidos
+    accessLock->Release();
+
     return numBytes;
 }
 
@@ -146,17 +175,40 @@ OpenFile::WriteAt(const char *from, unsigned numBytes, unsigned position)
     ASSERT(from != nullptr);
     ASSERT(numBytes > 0);
 
+    // Tomamos el lock de acceso a datos compartidos
+    accessLock->Acquire();
+    hdr->FetchFrom(sector);
+
     unsigned fileLength = hdr->FileLength();
     unsigned firstSector, lastSector, numSectors;
     bool firstAligned, lastAligned;
     char *buf;
 
-    if (position >= fileLength) {
-        return 0;  // Check request.
-    }
     if (position + numBytes > fileLength) {
-        numBytes = fileLength - position;
+        // Necesitamos extender el archivo
+        if (fileSystem != nullptr) {
+            bool success = fileSystem->ExtendFile(hdr, sector, position + numBytes);
+            if (!success) {
+                // Si falla por falta de espacio, escribimos hasta donde se pueda
+                if (position >= fileLength) {
+                    // Soltamos el lock de acceso a datos compartidos
+                    accessLock->Release();
+                    return 0;
+                }
+                numBytes = fileLength - position;
+            } else {
+                fileLength = hdr->FileLength();
+            }
+        } else {
+            if (position >= fileLength) {
+                // Soltamos el lock de acceso a datos compartidos
+                accessLock->Release();
+                return 0;
+            }
+            numBytes = fileLength - position;
+        }
     }
+
     DEBUG('f', "Writing %u bytes at %u, from file of length %u.\n",
           numBytes, position, fileLength);
 
@@ -171,11 +223,11 @@ OpenFile::WriteAt(const char *from, unsigned numBytes, unsigned position)
 
     // Read in first and last sector, if they are to be partially modified.
     if (!firstAligned) {
-        ReadAt(buf, SECTOR_SIZE, firstSector * SECTOR_SIZE);
+        synchDisk->ReadSector(hdr->ByteToSector(firstSector * SECTOR_SIZE), buf);
     }
     if (!lastAligned && (firstSector != lastSector || firstAligned)) {
-        ReadAt(&buf[(lastSector - firstSector) * SECTOR_SIZE],
-               SECTOR_SIZE, lastSector * SECTOR_SIZE);
+        synchDisk->ReadSector(hdr->ByteToSector(lastSector * SECTOR_SIZE),
+                              &buf[(lastSector - firstSector) * SECTOR_SIZE]);
     }
 
     // Copy in the bytes we want to change.
@@ -187,6 +239,9 @@ OpenFile::WriteAt(const char *from, unsigned numBytes, unsigned position)
                                &buf[(i - firstSector) * SECTOR_SIZE]);
     }
     delete [] buf;
+    
+    // Soltamos el lock de acceso a datos compartidos
+    accessLock->Release();
     return numBytes;
 }
 
@@ -194,5 +249,14 @@ OpenFile::WriteAt(const char *from, unsigned numBytes, unsigned position)
 unsigned
 OpenFile::Length() const
 {
-    return hdr->FileLength();
+    // Tomamos el lock de acceso a datos compartidos
+    accessLock->Acquire();
+    hdr->FetchFrom(sector);
+    
+    unsigned fileLength = hdr->FileLength();
+    
+    // Soltamos el lock de acceso a datos compartidos
+    accessLock->Release();
+    
+    return fileLength;
 }

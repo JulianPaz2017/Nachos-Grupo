@@ -86,6 +86,7 @@ private:
 
 #else // FILESYS
 class FileHeader;
+class Lock;
 
 class OpenFile {
 public:
@@ -116,7 +117,11 @@ public:
 
   private:
     FileHeader *hdr;  ///< Header for this file.
-    unsigned seekPosition;  ///< Current position within the file.
+    unsigned seekPosition;  ///< Current position within the file (privada de cada OpenFile (a) )
+    
+    unsigned sector;  ///< Sector del FileHeader; identifica el archivo ante FileSystem
+
+    Lock *accessLock; ///< Compartido por todos los OpenFile del mismo sector. Serializa Read/Write/Extend (b), (c)).
 };
 
 #endif

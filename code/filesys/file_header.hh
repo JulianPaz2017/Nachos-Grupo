@@ -38,6 +38,12 @@ public:
     /// file data.
     bool Allocate(Bitmap *bitMap, unsigned fileSize);
 
+    /// Extiende un archivo ya existente para que quepan
+    /// `newSize` bytes. 
+    /// Si `newSize <= FileLength()` no hace nada.
+    /// Devuelve false si no hay espacio en el disco.   
+    bool Extend(Bitmap *bitMap, unsigned newSize);
+
     /// De-allocate this file's data blocks.
     void Deallocate(Bitmap *bitMap);
 
